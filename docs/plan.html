@@ -1,0 +1,518 @@
+<title>Ledger &amp; Signal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#eef1f5; --surface:#ffffff; --surface-2:#f7f9fb;
+  --ink:#0f1620; --ink-soft:#4d5a6b; --ink-faint:#77879a;
+  --line:#d5dde6; --line-soft:#e4eaf1;
+  --accent:#3a4bc8; --accent-soft:#6b78d8;
+  --tier-a:#1a6f49; --tier-b:#8a5d00; --tier-c:#a83527;
+  --tier-a-bg:#e2f2ea; --tier-b-bg:#f8eed6; --tier-c-bg:#fae6e3;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0c1016; --surface:#141b25; --surface-2:#1a222e;
+    --ink:#e4ebf3; --ink-soft:#9aa8ba; --ink-faint:#6e7d90;
+    --line:#242e3c; --line-soft:#1e2733;
+    --accent:#8393ff; --accent-soft:#5d6ce0;
+    --tier-a:#4fcb93; --tier-b:#dcae57; --tier-c:#f0806e;
+    --tier-a-bg:#12291f; --tier-b-bg:#2b2313; --tier-c-bg:#2c1916;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0c1016; --surface:#141b25; --surface-2:#1a222e;
+  --ink:#e4ebf3; --ink-soft:#9aa8ba; --ink-faint:#6e7d90;
+  --line:#242e3c; --line-soft:#1e2733;
+  --accent:#8393ff; --accent-soft:#5d6ce0;
+  --tier-a:#4fcb93; --tier-b:#dcae57; --tier-c:#f0806e;
+  --tier-a-bg:#12291f; --tier-b-bg:#2b2313; --tier-c-bg:#2c1916;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Source Serif 4",Georgia,serif; font-size:16.5px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.shell{display:grid; grid-template-columns:200px minmax(0,1fr); gap:3rem; max-width:1120px; margin:0 auto; padding:3.5rem 2rem 6rem; align-items:start;}
+@media(max-width:900px){.shell{grid-template-columns:minmax(0,1fr); gap:0; padding:2.5rem 1.25rem 4rem;} .rail{display:none;}}
+
+.rail{position:sticky; top:2rem; font-family:"JetBrains Mono",monospace; font-size:.72rem; line-height:1.5;}
+.rail .rail-hd{color:var(--ink-faint); letter-spacing:.14em; text-transform:uppercase; padding-bottom:.6rem; margin-bottom:.6rem; border-bottom:1px solid var(--line);}
+.rail a{display:flex; gap:.55rem; color:var(--ink-soft); text-decoration:none; padding:.28rem 0;}
+.rail a:hover{color:var(--accent);}
+.rail a span{color:var(--ink-faint);}
+.rail a:hover span{color:var(--accent);}
+
+.doc{min-width:0;}
+h1,h2,h3,h4{font-family:"Archivo",system-ui,sans-serif; color:var(--ink); text-wrap:balance; font-weight:600;}
+h1{font-size:2.9rem; line-height:1.05; letter-spacing:-.025em; margin:0 0 .6rem; font-weight:700;}
+.eyebrow{font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 .9rem;}
+.dek{font-size:1.14rem; color:var(--ink-soft); max-width:62ch; margin:0 0 1.5rem; line-height:1.55;}
+.meta{font-family:"JetBrains Mono",monospace; font-size:.73rem; color:var(--ink-faint); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:.7rem 0; display:flex; flex-wrap:wrap; gap:1.5rem; margin-bottom:3rem;}
+
+section{margin:0 0 3.25rem; scroll-margin-top:1.5rem;}
+.sec-hd{display:flex; align-items:baseline; gap:.85rem; border-top:2px solid var(--ink); padding-top:.75rem; margin-bottom:1rem;}
+.sec-hd .n{font-family:"JetBrains Mono",monospace; font-size:.8rem; color:var(--accent); font-weight:500;}
+.sec-hd h2{font-size:1.42rem; margin:0; letter-spacing:-.015em;}
+h3{font-size:1.02rem; margin:1.6rem 0 .45rem; letter-spacing:-.005em;}
+h4{font-size:.93rem; margin:0 0 .3rem;}
+p{max-width:66ch; margin:0 0 .9rem;}
+ul,ol{max-width:66ch; padding-left:1.15rem; margin:.6rem 0 1rem;}
+li{margin:.4rem 0;}
+strong{font-weight:600;}
+em{color:var(--ink-soft);}
+a{color:var(--accent);}
+code{font-family:"JetBrains Mono",monospace; font-size:.82em; background:var(--surface-2); border:1px solid var(--line-soft); border-radius:3px; padding:.08em .34em;}
+.lede{font-size:1.03rem; color:var(--ink-soft);}
+
+.note{background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:5px; padding:.95rem 1.15rem; margin:1.2rem 0; max-width:66ch;}
+.note > p:last-child{margin-bottom:0;}
+.note .tag{display:block; font-family:"JetBrains Mono",monospace; font-size:.68rem; letter-spacing:.13em; text-transform:uppercase; color:var(--accent); margin-bottom:.4rem;}
+.note.alarm{border-left-color:var(--tier-c);}
+.note.alarm .tag{color:var(--tier-c);}
+.note.new{border-left-color:var(--tier-a);}
+.note.new .tag{color:var(--tier-a);}
+.note p{font-size:.94rem;}
+
+.tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:6px; margin:1.1rem 0; background:var(--surface);}
+table{border-collapse:collapse; width:100%; font-size:.86rem; font-family:"Archivo",sans-serif; min-width:520px;}
+th,td{text-align:left; padding:.6rem .8rem; border-bottom:1px solid var(--line-soft); vertical-align:top;}
+th{font-family:"JetBrains Mono",monospace; font-size:.68rem; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-faint); background:var(--surface-2); border-bottom:1px solid var(--line); font-weight:400; white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+.mono{font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums; font-size:.93em;}
+
+.tier{display:inline-block; font-family:"JetBrains Mono",monospace; font-size:.67rem; font-weight:500; padding:.16em .5em; border-radius:3px; letter-spacing:.04em; white-space:nowrap;}
+.tier.a{background:var(--tier-a-bg); color:var(--tier-a);}
+.tier.b{background:var(--tier-b-bg); color:var(--tier-b);}
+.tier.c{background:var(--tier-c-bg); color:var(--tier-c);}
+
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; margin:1.1rem 0;}
+.cards .card{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:1rem 1.15rem;}
+.cards .card h4{font-family:"Archivo",sans-serif; color:var(--ink);}
+.cards .card p{font-size:.89rem; color:var(--ink-soft); margin:0; max-width:none;}
+.card .flag{font-family:"JetBrains Mono",monospace; font-size:.64rem; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:.35rem;}
+
+.steps{list-style:none; padding:0; margin:1.1rem 0; max-width:70ch;}
+.steps > li{display:grid; grid-template-columns:2.2rem minmax(0,1fr); gap:.9rem; margin:0 0 1rem; align-items:start;}
+.steps .idx{font-family:"JetBrains Mono",monospace; font-size:.8rem; color:var(--accent); padding-top:.15rem;}
+.steps h4{margin:0 0 .2rem;}
+.steps p{font-size:.91rem; color:var(--ink-soft); margin:0; max-width:none;}
+
+figure{margin:1.4rem 0; max-width:66ch;}
+figure svg{display:block; width:100%; height:auto; background:var(--surface); border:1px solid var(--line); border-radius:6px;}
+figcaption{font-size:.83rem; color:var(--ink-faint); margin-top:.5rem; font-family:"Archivo",sans-serif; max-width:60ch;}
+.svg-label{font-family:"JetBrains Mono",monospace; font-size:9px; fill:var(--ink-faint);}
+.svg-key{font-family:"Archivo",sans-serif; font-size:10px; fill:var(--ink-soft);}
+
+footer{border-top:1px solid var(--line); padding-top:1.2rem; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:1.5rem;}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+
+<div class="shell">
+
+<nav class="rail">
+  <div class="rail-hd">Contents</div>
+  <a href="#s1"><span>01</span> Followability</a>
+  <a href="#s2"><span>02</span> What filings say</a>
+  <a href="#s3"><span>03</span> Source tiers</a>
+  <a href="#s4"><span>04</span> Return math</a>
+  <a href="#s5"><span>05</span> Confidence</a>
+  <a href="#s6"><span>06</span> Jurisdiction</a>
+  <a href="#s7"><span>07</span> Signals</a>
+  <a href="#s8"><span>08</span> Statements</a>
+  <a href="#s9"><span>09</span> Analysts</a>
+  <a href="#s10"><span>10</span> Two views</a>
+  <a href="#s11"><span>11</span> Architecture</a>
+  <a href="#s12"><span>12</span> Regulatory</a>
+  <a href="#s13"><span>13</span> Roadmap</a>
+  <a href="#s14"><span>14</span> Decisions</a>
+</nav>
+
+<main class="doc">
+
+<p class="eyebrow">Product &amp; Methodology Plan · Revision 5</p>
+<h1>Ledger &amp; Signal</h1>
+<p class="dek">Measuring whether politicians and large investors actually beat the market — and whether any of that edge survives the delay before you're allowed to know about it.</p>
+<div class="meta">
+  <span>US + India, parallel</span>
+  <span>14 sections</span>
+  <span>Rev 5 — free-data plan, whale scope, India source added</span>
+</div>
+
+<div class="note alarm">
+<span class="tag">The thesis, stated honestly</span>
+<p>Almost every product in this space answers "who made money?" That question is nearly useless on its own, because the data arrives 30–135 days late. The question worth building for is <strong>"whose edge is still there when you finally see it?"</strong> This plan restructures the whole app around that second question, and names the data problems that would otherwise make every number on the page quietly wrong.</p>
+</div>
+
+<div class="note new">
+<span class="tag">Entity taxonomy — two tracked populations, both markets</span>
+<p><strong>Politicians</strong> — elected officials and their disclosed/declared financial activity, US and India, per §01–§06. <strong>Whales</strong> — everyone else who moves markets by size: institutional managers, activist holders, and large individual investors, in both the US and India, tracked through whatever structured disclosure exists for each (13F/13D-G in the US; SEBI shareholding-pattern and SAST filings in India — see §03). The India-based individual "superstar investors" that outlets like Trendlyne track fall entirely under this second population, not under politicians.</p>
+</div>
+
+<section id="s1">
+<div class="sec-hd"><span class="n">01</span><h2>Followability: the metric this product is actually about</h2></div>
+
+<p class="lede">Two politicians can have identical returns and completely opposite value to a user. One trades on a thesis that plays out over two years; the other captures a move in the week before disclosure. The first is followable. The second is a museum exhibit.</p>
+
+<p>So the flagship metric is not alpha. It is <strong>alpha decay</strong> — the same trade scored three times, at three points in time:</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Measured from</th><th>What it tells you</th><th>Who can act on it</th></tr></thead>
+<tbody>
+<tr><td class="mono">Trade date</td><td>Raw skill (or raw information advantage)</td><td>Only the filer</td></tr>
+<tr><td class="mono">Disclosure date</td><td>Edge remaining when it becomes public</td><td>You, in theory</td></tr>
+<tr><td class="mono">Disclosure + 2 days</td><td>Edge after the crowd has also seen it</td><td>You, realistically</td></tr>
+</tbody>
+</table>
+</div>
+
+<figure>
+<svg viewBox="0 0 640 220" role="img" aria-label="Illustrative curve showing cumulative abnormal return accruing mostly before the disclosure date, leaving a small residual afterward.">
+  <line x1="52" y1="180" x2="620" y2="180" stroke="var(--line)" stroke-width="1"/>
+  <line x1="52" y1="24" x2="52" y2="180" stroke="var(--line)" stroke-width="1"/>
+  <rect x="52" y="24" width="286" height="156" fill="var(--accent)" opacity="0.07"/>
+  <line x1="338" y1="24" x2="338" y2="180" stroke="var(--tier-c)" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <path d="M52,172 C120,150 200,96 270,68 C300,56 320,50 338,47 C400,42 480,39 620,36"
+        fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="338" cy="47" r="4" fill="var(--tier-c)"/>
+  <circle cx="52" cy="172" r="3.5" fill="var(--accent)"/>
+  <text class="svg-label" x="52" y="196">trade date</text>
+  <text class="svg-label" x="290" y="196">disclosure (+30–45d)</text>
+  <text class="svg-label" x="560" y="196">+180d</text>
+  <text class="svg-label" x="10" y="30">CAR %</text>
+  <text class="svg-key" x="120" y="112">captured before you see it</text>
+  <text class="svg-key" x="400" y="70">residual — the only part you can trade</text>
+</svg>
+<figcaption>Illustrative shape, not measured data. The product's core screen is this curve computed per entity from their real filing history. An entity whose curve is flat after the dashed line has zero followable edge, regardless of how good their headline return looks.</figcaption>
+</figure>
+
+<div class="note new">
+<span class="tag">Why this reframes everything</span>
+<p>Ranking by raw return produces a leaderboard of people you cannot profitably copy. Ranking by <strong>post-disclosure residual alpha</strong> produces the list the user actually came for — and it will look very different. Some famous names will rank badly. That's the product working, not failing.</p>
+</div>
+
+<h3>Where the entry-vs-current-price screener fits</h3>
+<p>The screener idea from the last revision survives, but demoted to what it is: a <em>filter</em>, not a signal. It answers "has this move already happened?" and nothing else. It sits behind two gates — the entity's confidence score (§05) and their decay profile (above) — because a stock that hasn't moved since a weak entity bought it is not an opportunity, it's just a stock.</p>
+
+<h3>And on "flat for 5 years but still held"</h3>
+<p>Still a loser, and the app says so. Flat nominal price over five years is a real loss to inflation, to a risk-free T-bill or FD, and almost certainly to the index. "Still held" is not conviction — it can equally be a blind trust nobody is steering, an illiquid position, or an unrealized loss being deferred for tax reasons. Every return is <strong>total return</strong> (price + dividends, corporate-action adjusted) against a factor-matched benchmark, and "flat, still held" gets its own explicit label rather than being laundered into "good pick."</p>
+</section>
+
+<section id="s2">
+<div class="sec-hd"><span class="n">02</span><h2>What the filings actually contain — and the five traps</h2></div>
+
+<p class="lede">This section did not exist in the last revision, and its absence would have produced wrong numbers on day one. Each item below breaks a naive implementation.</p>
+
+<ol class="steps">
+<li><span class="idx">i</span><div>
+<h4>Congressional PTRs report ranges, not amounts</h4>
+<p>Transactions are disclosed in buckets — $1,001–$15,000, $15,001–$50,000, $50,001–$100,000, widening to bands millions wide at the top. You <strong>cannot</strong> compute a true position-weighted portfolio return from this. Fix: report equal-weighted return as the primary figure, plus a bucket-midpoint-weighted estimate shown as a <em>range</em>, never a point estimate. Any product showing a precise portfolio % from PTR data is fabricating precision.</p>
+</div></li>
+<li><span class="idx">ii</span><div>
+<h4>Options are not equity, and the famous trades are options</h4>
+<p>Several of the highest-profile congressional trades are long-dated call options (LEAPS). Booking a $1M-notional call position as a $1M stock buy misstates both the capital at risk and the return by an order of magnitude. Fix: parse instrument type, strike, and expiry; compute option returns on <em>premium paid</em>, and report notional exposure separately. Where the filing is too vague to determine this, the trade is excluded from scoring rather than guessed.</p>
+</div></li>
+<li><span class="idx">iii</span><div>
+<h4>Spouse and dependent trades are attributed to the member</h4>
+<p>PTRs carry an owner code — <code>SP</code> (spouse), <code>DC</code> (dependent child), <code>JT</code> (joint). A spouse who is a professional fund manager will dominate a member's apparent "skill." Fix: owner code is a first-class dimension. Default scoring view is member-only; spouse and joint activity are scored as separate, labeled tracks. This matters enormously for a handful of the best-known names.</p>
+</div></li>
+<li><span class="idx">iv</span><div>
+<h4>Filings get amended, and amendments are the interesting part</h4>
+<p>PTRs are frequently amended — corrected amounts, added transactions, changed dates. Fix: store every version, diff them, and expose the amendment history. A pattern of large upward amendments is itself a disclosure-quality signal, and silently overwriting with the latest version destroys the ability to backtest what was knowable at the time.</p>
+</div></li>
+<li><span class="idx">v</span><div>
+<h4>Many filings are scanned PDFs, some handwritten</h4>
+<p>The extraction pipeline is not a nice-to-have, it is the product's foundation: OCR → LLM structured extraction → confidence score → human review queue for anything below threshold. Low-confidence extractions are flagged in the UI, not silently scored. <strong>Filing legibility becomes a published per-member metric</strong> — consistently unparseable disclosures are a transparency failure worth naming.</p>
+</div></li>
+</ol>
+
+<div class="note alarm">
+<span class="tag">Sixth trap: look-ahead bias</span>
+<p>Every backtest must run on what was knowable <em>on that date</em> — the disclosure date, not the trade date, and the filing version that existed then, not the amended one. This can't be enforced by discipline; it has to be enforced by the data model. See the bitemporal store in §10.</p>
+</div>
+</section>
+
+<section id="s3">
+<div class="sec-hd"><span class="n">03</span><h2>Sources, by trust tier and honest latency</h2></div>
+
+<p>Latency figures below are the real worst case, not the headline number. 13F is the worst offender: a trade made on the first day of a quarter can surface up to ~135 days later.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Tier</th><th>Source</th><th>Covers</th><th>Worst-case lag</th><th>Key limitation</th></tr></thead>
+<tbody>
+<tr><td><span class="tier a">A</span></td><td>SEC — Form 4</td><td>US corporate insiders</td><td class="mono">2 business days</td><td>Insiders only, not politicians</td></tr>
+<tr><td><span class="tier a">A</span></td><td>House/Senate PTRs (STOCK Act)</td><td>US Congress</td><td class="mono">~45 days</td><td>Ranges not amounts; often scanned</td></tr>
+<tr><td><span class="tier a">A</span></td><td>SEC — Form 13F</td><td>US institutions</td><td class="mono">~135 days</td><td>Long equity only; no shorts, no cash</td></tr>
+<tr><td><span class="tier a">A</span></td><td>SEC — Forms 3/5, 13D/G</td><td>Activist &amp; &gt;5% stakes</td><td class="mono">10 days</td><td>Large positions only</td></tr>
+<tr><td><span class="tier a">A</span></td><td>MCA21 / RoC director &amp; promoter filings</td><td>India — politician or relative as director/promoter</td><td class="mono">event-driven</td><td>Only where a directorship exists</td></tr>
+<tr><td><span class="tier a">A</span></td><td>SEBI PIT — insider &amp; SAST disclosures</td><td>India — listed-co insiders, promoters</td><td class="mono">2 days</td><td>Corporate insiders, not politicians</td></tr>
+<tr><td><span class="tier a">A</span></td><td>SEBI LODR Reg 31 — quarterly shareholding pattern (&gt;1% holders)</td><td>India — named individual &amp; institutional whales</td><td class="mono">~21 days, quarterly</td><td><strong>Primary India whale source</strong> — this is how Trendlyne's "superstar investor" tracking actually works</td></tr>
+<tr><td><span class="tier b">B</span></td><td>NSE/BSE bulk &amp; block deals</td><td>India — large one-off trades, any holder size</td><td class="mono">T+1</td><td>Unattributed; needs name resolution; supplements the &gt;1% quarterly view with intra-quarter timing</td></tr>
+<tr><td><span class="tier b">B</span></td><td>myneta.info / ECI affidavits</td><td>India — politician net worth</td><td class="mono">~5 years</td><td>Snapshot, self-declared, not trades</td></tr>
+<tr><td><span class="tier b">B</span></td><td>Register of Members' Interests (LS/RS)</td><td>India — declared interests</td><td class="mono">irregular</td><td>Weakly enforced, unstructured</td></tr>
+<tr><td><span class="tier c">C</span></td><td>X / Truth Social / Facebook claims</td><td>Third-party allegations of trades</td><td class="mono">—</td><td><strong>Never enters scoring</strong></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Cross-reference sources — the ones that create the differentiation</h3>
+<p>These aren't trade data. They're what turns trade data into a story, and almost nobody joins them properly:</p>
+<div class="cards">
+<div class="card"><span class="flag">US</span><h4>Congress.gov API</h4><p>Bill introductions, sponsorships, votes, and committee markup dates — joinable to trade dates.</p></div>
+<div class="card"><span class="flag">US</span><h4>Committee hearing calendars</h4><p>Scheduled hearing and markup dates. Trading days before your own committee marks up a bill is the actual smoking gun.</p></div>
+<div class="card"><span class="flag">US</span><h4>USASpending.gov</h4><p>Federal contract awards, with an API. Buying a defense contractor before an award posts is visible here.</p></div>
+<div class="card"><span class="flag">US</span><h4>LDA lobbying disclosures</h4><p>Quarterly filings — which firms lobbied whom, on what bill.</p></div>
+<div class="card"><span class="flag">India</span><h4>GeM / CPPP tenders</h4><p>Government e-Marketplace and Central Public Procurement Portal award data — the India analogue of USASpending.</p></div>
+<div class="card"><span class="flag">India</span><h4>PIB releases &amp; gazette</h4><p>Policy announcements with precise timestamps — PLI schemes, tariff changes, licence awards.</p></div>
+</div>
+
+<div class="note">
+<span class="tag">Why MCA21 beats affidavits for India</span>
+<p>ECI affidavits refresh once per election cycle and describe net worth, not transactions. MCA21 updates whenever a director's or promoter's shareholding actually changes — it is the closest thing India has to a Form 4, and it is the one India source worth building first. Affidavit data stays in the product only as a coarse, clearly-labeled "declared wealth between elections" delta.</p>
+</div>
+</section>
+
+<section id="s4">
+<div class="sec-hd"><span class="n">04</span><h2>Return methodology</h2></div>
+
+<h3>Alpha, not return</h3>
+<p>A politician who was overweight small-cap tech in 2020 was not skilled — they were exposed to a factor that happened to run. Reporting their raw return as skill is the single most common error in this category of product. Fix: run each entity's trade series through a <strong>Fama-French / Carhart factor regression</strong> (market, size, value, momentum; FF5 where the sample supports it). The reported number is the residual — the part not explained by factor exposure. Sector-matched benchmarking is the fallback where sample size is too thin for a regression.</p>
+
+<h3>Event-study discipline for the abnormal-return numbers</h3>
+<p>"The stock went up 8% after they bought" is not a finding. The finding is <strong>cumulative abnormal return</strong> against an expected-return model estimated over a clean prior window, with standard errors. Same machinery serves both the trade analysis and the statement analysis in §08 — build it once, properly.</p>
+
+<h3>Positions that are still open</h3>
+<p>Most disclosed trades never show a matching sale. Fix: two parallel books. <strong>Closed round-trips</strong> get realized return. <strong>Open positions</strong> get marked to market with an explicit as-of date, and are reported separately — never blended into a single headline number, because blending them lets an entity hide losses by simply never selling.</p>
+
+<h3>Mechanics that silently corrupt everything</h3>
+<ul>
+<li><strong>Corporate actions</strong> — splits, spin-offs, mergers, ticker changes, delistings. A stock split misread as an 80% loss is the classic failure. Applied before any return math, from a point-in-time adjusted price source.</li>
+<li><strong>Survivorship-free universe</strong> — delisted and acquired names must remain in the benchmark and the price history, or every backtest inherits an upward bias.</li>
+<li><strong>Realistic execution</strong> — the simulator fills at the next open after disclosure, with spread and slippage, not at the disclosed price. The gap between those two is often the entire "edge."</li>
+<li><strong>Currency and dividends</strong> — INR/USD handling for cross-listed names; dividends reinvested at ex-date for total return.</li>
+</ul>
+</section>
+
+<section id="s5">
+<div class="sec-hd"><span class="n">05</span><h2>Confidence meter — and the statistics that keep it honest</h2></div>
+
+<p>The confidence meter answers "is this person worth following at all," independent of any single trade. Inputs:</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Input</th><th>Measures</th></tr></thead>
+<tbody>
+<tr><td>Post-disclosure residual alpha</td><td>The §01 metric — edge that survived the lag. Weighted highest.</td></tr>
+<tr><td>Magnitude-weighted alpha</td><td>Average factor-adjusted return per trade, so one lucky 10-bagger can't mask ten losses</td></tr>
+<tr><td>Consistency</td><td>Dispersion of per-trade alpha — a steady 55% hit rate differs from a volatile one</td></tr>
+<tr><td>Recency weighting</td><td>Exponential decay; a strong record from a prior committee assignment counts for less</td></tr>
+<tr><td>Sample adequacy</td><td>Below the trade-count floor the meter reads "insufficient history" and shows no score at all</td></tr>
+<tr><td>Disclosure quality</td><td>Timeliness, amendment rate, and filing legibility (§02) — a separate integrity axis, never averaged into skill</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note alarm">
+<span class="tag">The multiple-comparisons problem — the biggest statistical hole in the last revision</span>
+<p>With 535 members of Congress plus thousands of 13F filers, <strong>some will look brilliant purely by chance.</strong> A leaderboard sorted by alpha is, mathematically, a machine for surfacing luck. Confidence intervals alone don't fix this. Fix: apply <strong>false-discovery-rate control (Benjamini–Hochberg)</strong> across the entire ranked cohort, and display each entity's FDR-adjusted significance next to its rank. Entities whose alpha doesn't survive correction are shown as <em>"not distinguishable from chance"</em> — even when their raw number looks spectacular. Expect this to disqualify most of the leaderboard. That is the correct and honest outcome.</p>
+</div>
+
+<p>The meter outputs a 0–100 score plus a significance state (<em>significant / not distinguishable from chance / insufficient history</em>). The score never appears without the state attached to it.</p>
+</section>
+
+<section id="s6">
+<div class="sec-hd"><span class="n">06</span><h2>Jurisdiction attribution — the conflict-of-interest engine</h2></div>
+
+<p class="lede">If an edge exists, theory says it should concentrate in the sector the person has power over. That's a testable claim, and testing it well is the most defensible thing this product can do.</p>
+
+<ol class="steps">
+<li><span class="idx">1</span><div><h4>Versioned jurisdiction registry</h4><p>Committee assignments (US) and ministry portfolios (India) mapped to GICS sectors, versioned by date. A trade is classified in- or out-of-jurisdiction by the assignment in force <em>when the trade happened</em>, so reshuffles never rewrite history.</p></div></li>
+<li><span class="idx">2</span><div><h4>Split alpha by jurisdiction</h4><p>Compute in-jurisdiction alpha and out-of-jurisdiction alpha separately, each with its own FDR-adjusted significance. The headline stat is the <strong>gap</strong> between them.</p></div></li>
+<li><span class="idx">3</span><div><h4>Event-proximity scoring</h4><p>Beyond static sector mapping: distance in days from each trade to the nearest relevant committee hearing, markup, bill introduction, government contract award, or policy announcement. A trade seven days before your own committee's markup of a bill affecting that company is a categorically different object from a random purchase in the same sector.</p></div></li>
+<li><span class="idx">4</span><div><h4>Report as a pattern, never as an accusation</h4><p>Output is a proximity distribution across all of an entity's trades, with a base rate for comparison — "38% of this member's energy trades fall within 10 days of an energy-committee event, against a 9% cohort baseline." Factual, checkable, and it lets the reader draw their own conclusion.</p></div></li>
+</ol>
+
+<div class="note">
+<span class="tag">Sample-size guard, applied per cell</span>
+<p>Per-sector samples are much smaller than overall samples — a member with 12 disclosed trades might have 3 in their own committee's sector. FDR correction and the sample floor apply independently to every sector cell. An entity can legitimately show a confident overall score alongside "insufficient data" in every individual sector, and the UI must allow that combination to display rather than forcing a number.</p>
+</div>
+</section>
+
+<section id="s7">
+<div class="sec-hd"><span class="n">07</span><h2>Signal features worth building</h2></div>
+
+<div class="cards">
+<div class="card"><span class="flag">Highest value</span><h4>Conviction clustering</h4><p>Five unrelated high-confidence entities buying the same name inside a short window is a far stronger signal than any single trade, and it's statistically more robust. Cross-source clustering is stronger still — a congressional buy plus insider Form 4 buying plus 13F accumulation in the same name.</p></div>
+<div class="card"><span class="flag">Academically supported</span><h4>Insider cluster buys</h4><p>Multiple executives at one company buying in the same window is one of the few insider patterns with genuine published support behind it. Cheap to compute from Form 4, high signal.</p></div>
+<div class="card"><span class="flag">Novel</span><h4>Say/do divergence</h4><p>Compare what an entity says publicly about a sector against what their filings show them doing in it. Public enthusiasm for green energy while quietly selling solar is a real, defensible, journalistic-grade finding — both sides are primary sources.</p></div>
+<div class="card"><span class="flag">Contrarian</span><h4>Fade candidates</h4><p>Reliably negative alpha is information too, and statistically just as valid as positive alpha. An entity whose picks consistently underperform gets surfaced as a fade signal rather than hidden at the bottom of a leaderboard.</p></div>
+<div class="card"><span class="flag">Trust-building</span><h4>Paper-portfolio follow</h4><p>Users follow an entity into a simulated portfolio with real slippage and honest accounting, and watch it run before risking money. Converts a gambling-shaped feature into a learning-shaped one, and generates the product's own out-of-sample track record.</p></div>
+<div class="card"><span class="flag">Retention</span><h4>Decay-aware alerts</h4><p>Push notifications that carry their own caveat: "New filing from an entity with a 78 confidence score. Trade is 34 days old; this entity's historical alpha remaining at this lag is +0.4%." The honesty <em>is</em> the feature.</p></div>
+<div class="card"><span class="flag">Integrity</span><h4>Compliance leaderboard</h4><p>Late filings, amendment rates, and STOCK Act penalties are public. The statutory fine is nominal — which is precisely the story. A transparency ranking scored entirely separately from returns, and probably the most press-worthy screen in the app.</p></div>
+<div class="card"><span class="flag">Correctness</span><h4>Agency flags</h4><p>Blind trusts, managed accounts, and index-fund holdings marked as not personally directed and excluded from skill scoring. Kept visible in the raw holdings view, never counted as a call.</p></div>
+</div>
+</section>
+
+<section id="s8">
+<div class="sec-hd"><span class="n">08</span><h2>Statements &amp; social — quarantine and event study</h2></div>
+
+<p>Two structurally different things get conflated here constantly, and separating them is the whole design:</p>
+
+<div class="cards">
+<div class="card"><h4>Their own statements <span class="tier a">Tier A source</span></h4><p>A politician's own verified post is a primary source. Entity and sector extraction, sentiment, then a proper event study on the named sector or stock. Fully legitimate to analyze and to attribute.</p></div>
+<div class="card"><h4>Third-party claims <span class="tier c">Tier C, quarantined</span></h4><p>"Account X says Minister Y bought Z, with a photo." Stored in a physically separate table, displayed only with an unverified badge and a link to the original, and structurally incapable of reaching the scoring engine. Promotes to Tier A only when matched to an actual filing.</p></div>
+</div>
+
+<div class="note alarm">
+<span class="tag">The photo problem, directly</span>
+<p>A photo next to a claim is not evidence of a trade — it is evidence that someone posted a photo. Publishing an unverified allegation that a named person made a specific trade carries genuine defamation exposure in both jurisdictions, and India's rules here are less forgiving than the US's. The claims layer therefore ships with a documented right-of-reply and takedown process from day one, not after the first legal letter. If that process feels heavy, that is a signal the feature may not be worth shipping at all.</p>
+</div>
+
+<h3>Statement analysis, done properly</h3>
+<ul>
+<li>Official APIs where they exist (X API, Meta Graph API for public Pages). Truth Social has no public API and restrictive terms — that source is <strong>gated on a legal review</strong>, not just a slow poller.</li>
+<li>Entity resolution beyond cashtags — "chip tariffs" must resolve to semiconductors with no <code>$</code> symbol present. This is a maintained taxonomy plus an LLM extraction step, not a regex.</li>
+<li>Abnormal return over an event window (T+1 / T+7 / T+30) against an expected-return model, with significance. Not raw price change.</li>
+<li>Copy discipline throughout: "the sector's abnormal return over the 7 days following this post was +1.4% (not significant)." Never "this post moved the market."</li>
+</ul>
+</section>
+
+<section id="s9">
+<div class="sec-hd"><span class="n">09</span><h2>Analyst &amp; broker ranking</h2></div>
+
+<div class="note alarm">
+<span class="tag">Reframing the brief</span>
+<p>The ask was to scrape passively "so we don't get banned." That framing presumes we're already violating someone's terms and just want to avoid being caught — which is the wrong goal and, for the paid sources named, a real legal exposure rather than a rate-limiting problem. Trendlyne, MarketScreener, and Google Finance all restrict automated extraction of proprietary analyst data in their terms. The correct sequence is <strong>licence or official API first</strong>; polite crawling is only for sources that genuinely permit it. Politeness is the ceiling of good behavior, not a workaround.</p>
+</div>
+
+<h3>Access design, where automated access is permitted</h3>
+<ul>
+<li><strong>Structured feeds first</strong> — broker target changes often hit press-release wires and RSS before any page needs scraping. Check these before writing a crawler at all.</li>
+<li><strong>Single-worker, cache-first</strong> — one target price per analyst/ticker refreshed daily, never on user page load. Randomized multi-second intervals, no parallel fan-out.</li>
+<li><strong>Full <code>robots.txt</code> compliance</strong>, exponential backoff on any 429/403, and a self-identifying user agent with contact details so an operator can reach us instead of silently blocking.</li>
+<li><strong>Hard stop on 403</strong> — a block is a decision by the site owner, and the pipeline treats it as final rather than routing around it.</li>
+</ul>
+
+<h3>Ranking methodology</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Metric</th><th>Definition</th></tr></thead>
+<tbody>
+<tr><td>Directional accuracy</td><td>% of calls matching subsequent direction over the analyst's own stated horizon</td></tr>
+<tr><td>Target error</td><td>Median absolute % gap between target and realized price at horizon</td></tr>
+<tr><td>Benchmark-adjusted alpha</td><td>Target-implied return minus sector index return — a "buy" in a sector that doubled is not a good call</td></tr>
+<tr><td>Herding penalty</td><td>Down-weights targets that merely track consensus; rewards non-consensus calls that proved correct</td></tr>
+<tr><td>Revision honesty</td><td>Flags targets revised to follow price rather than lead it — the most common analyst failure mode</td></tr>
+<tr><td>Coverage adequacy</td><td>Same FDR correction as §05 — thin coverage yields no rank</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="s10">
+<div class="sec-hd"><span class="n">10</span><h2>Two views: people ↔ positions</h2></div>
+
+<p class="lede">The whole app is a graph with two natural entry points, and both need to be first-class, not one primary view with the other bolted on as a filter.</p>
+
+<div class="cards">
+<div class="card"><span class="flag">Entry point A</span><h4>Person view</h4><p>One politician, whale, or fund. Their full position history, decay curve, confidence score, jurisdiction split, compliance record. "Everything this entity has done."</p></div>
+<div class="card"><span class="flag">Entry point B</span><h4>Instrument view</h4><p>One stock or sector. Every tracked entity currently or historically holding it, sorted by confidence score and position size, with entry dates overlaid on the price chart. "Who's in this name, and were they early or late."</p></div>
+</div>
+
+<h3>Why this matters more than it sounds</h3>
+<p>The instrument view is what makes conviction clustering (§07) visible without reading it off a table — five high-confidence entities converging on the same ticker inside a short window shows up as a visual pile-up on that stock's page. It's also the natural surface for the "am I about to buy something a fade-candidate is dumping" check. Both views read from the same underlying position graph; neither is a special case of the other.</p>
+
+<h3>Shared components between the two</h3>
+<ul>
+<li><strong>Position card</strong> — entity, instrument, entry date, disclosure date, decay-adjusted alpha, confidence badge. Same component renders in both views, just grouped differently (by entity in Person view, by ticker in Instrument view).</li>
+<li><strong>Jurisdiction badge</strong> — shows on a position in Person view as "in-committee" / "out-of-committee"; shows on Instrument view as "N of M holders are in-jurisdiction for this sector," which is itself a useful aggregate stat per stock.</li>
+<li><strong>Cross-navigation</strong> — every entity name links to their Person view, every ticker links to its Instrument view, from anywhere in the app.</li>
+</ul>
+</section>
+
+<section id="s11">
+<div class="sec-hd"><span class="n">11</span><h2>Architecture</h2></div>
+
+<ol class="steps">
+<li><span class="idx">1</span><div><h4>Bitemporal core — the single most important decision</h4><p>Every record carries <em>valid time</em> (when the trade happened) and <em>transaction time</em> (when we learned it). Every query is as-of a date. This makes look-ahead bias <strong>structurally impossible</strong> rather than a discipline problem, and handles filing amendments natively. Retrofitting this later is a rewrite; it has to be in the first schema.</p></div></li>
+<li><span class="idx">2</span><div><h4>Immutable document store with provenance chain</h4><p>Original PDF/HTML retained forever with a content hash. Every number in the UI traces back to a source document and a specific extraction run. Non-negotiable for a product making claims about named public figures.</p></div></li>
+<li><span class="idx">3</span><div><h4>Physically separated trust tiers</h4><p><code>filings</code> and <code>claims</code> as separate stores with separate access paths — not a boolean on one table. The scoring engine has no read path to <code>claims</code> at all, so a leak requires a deliberate code change rather than a forgotten <code>WHERE</code> clause.</p></div></li>
+<li><span class="idx">4</span><div><h4>Entity resolution as a service, with scored matches</h4><p>Name → person, name → company, promoter → politician's relative. Common-name collisions are the norm, not the edge case, in both countries. Every match carries a confidence score; below threshold it goes to a review queue rather than into the graph. A relationship graph (spouse, dependent, family firm) is part of this from the start.</p></div></li>
+<li><span class="idx">5</span><div><h4>Versioned, reproducible scoring</h4><p>The scoring model is versioned and every published rank records which version produced it. Ranks must be explainable and re-runnable — "why did I drop 20 places" needs a real answer.</p></div></li>
+<li><span class="idx">6</span><div><h4>Market-data layer</h4><p>Point-in-time, corporate-action-adjusted, survivorship-bias-free price and benchmark history, plus factor return series. This is a buy, not a build — and it's a real line item in the budget rather than an afterthought.</p></div></li>
+</ol>
+</section>
+
+<section id="s12">
+<div class="sec-hd"><span class="n">12</span><h2>Regulatory and ethical posture</h2></div>
+
+<p class="lede">Entirely missing from the last revision, and it constrains what can ship more than any engineering decision here.</p>
+
+<h3>You may be building a regulated product</h3>
+<ul>
+<li><strong>India</strong> — SEBI's Research Analyst and Investment Adviser regulations are broad. A product that ranks entities and effectively tells users whom to follow can be read as research or advice, and both require registration. Get an opinion before launch, not after.</li>
+<li><strong>US</strong> — the Investment Advisers Act has a publisher's exemption for general, impersonal, regularly-published commentary. Personalized recommendations, or anything shaped like "buy this now," can push past it.</li>
+<li><strong>Practical implication</strong> — the product describes what people did and how it performed. It does not tell anyone what to buy. That distinction should shape the copy on every screen, not just a footer disclaimer.</li>
+</ul>
+
+<h3>Data protection and defamation</h3>
+<ul>
+<li><strong>India's DPDP Act (2023)</strong> governs processing personal data of individuals; public-figure and journalistic considerations apply but don't grant blanket exemption. Family members named through relationship graphs are frequently <em>not</em> public figures — treat that graph with real care.</li>
+<li><strong>Defamation</strong> — the claims layer is the main exposure. Right-of-reply and takedown process from day one (§08).</li>
+</ul>
+
+<h3>Designing against the obvious harm</h3>
+<p>A public "who's beating the market" leaderboard is an invitation for retail users to copy 45-day-old trades with real money. Mitigations that are design decisions, not disclaimers: lead with the decay curve rather than raw returns; make the paper portfolio the default follow action; show FDR significance next to every rank so most entries visibly read "not distinguishable from chance"; never rank by raw return anywhere in the product.</p>
+</section>
+
+<section id="s13">
+<div class="sec-hd"><span class="n">13</span><h2>Roadmap</h2></div>
+
+<ol class="steps">
+<li><span class="idx">0</span><div><h4>Foundations — before any feature</h4><p>Bitemporal schema, document store, entity resolution skeleton. Market data on free sources (Yahoo/<code>yfinance</code>, NSE/BSE bhavcopy, SEC EDGAR XBRL) plus the self-maintained delisted-securities table — see §14.3. Unglamorous and non-negotiable; everything else is a rewrite without it.</p></div></li>
+<li><span class="idx">1</span><div><h4>US + India verified core, in parallel</h4><p><strong>US:</strong> PTR + Form 4 + 13F/13D-G ingestion with full §02 trap handling, covering both politicians and US whales. <strong>India:</strong> SEBI LODR Reg 31 shareholding-pattern filings (primary whale source) + SEBI PIT insider/promoter disclosures + NSE/BSE bulk-block deals for intra-quarter timing — this data is full-strength from day one for whales. MCA21 director/promoter filings for the politician-proxy half. Factor-adjusted alpha, decay curve (the hero screen), FDR-corrected confidence meter, and both Person/Instrument views (§10) ship together across both markets and both entity types.</p></div></li>
+<li><span class="idx">2</span><div><h4>Jurisdiction &amp; conflict engine</h4><p>Congress.gov, committee calendars, USASpending, LDA joins for the US; GeM/CPPP and PIB joins for India. Event-proximity scoring and the in/out-of-jurisdiction alpha split. This is the differentiation — no competitor does it well in either market.</p></div></li>
+<li><span class="idx">3</span><div><h4>Signal layer &amp; paper portfolios</h4><p>Conviction clustering, insider cluster buys, fade candidates, decay-aware alerts, simulated follow portfolios.</p></div></li>
+<li><span class="idx">4</span><div><h4>Statements &amp; curated social layer</h4><p>Official-account event studies first (§08). The Tier C layer ships in the curated form from §14.2 — allowlisted accounts only, never open ingestion.</p></div></li>
+<li><span class="idx">5</span><div><h4>Analyst ranking</h4><p>Gated entirely on licensing outcomes from §09.</p></div></li>
+</ol>
+
+<div class="note">
+<span class="tag">Why India isn't fully caught up even running in parallel</span>
+<p>Running both markets from Phase 1 closes the gap where it's closeable — whale/insider tracking is real, structured, and available today via SEBI PIT and exchange bulk-deal data. It does not close the politician gap: India has no STOCK-Act equivalent, so the politician side of the India product stays limited to the MCA21/affidavit proxies no matter how early it's built. That asymmetry is a fact about the underlying disclosure regime, not a sequencing choice.</p>
+</div>
+</section>
+
+<section id="s14">
+<div class="sec-hd"><span class="n">14</span><h2>Decisions — resolved this round</h2></div>
+<ol>
+<li><strong>Hero screen: decay curve.</strong> Confirmed. It reads as one line trending down toward a flat "residual" zone — no statistics background needed to grasp "most of the gain happened before you could see it." A one-line explainer sits under the chart on first view; no separate stats literacy required.</li>
+<li><strong>Tier C claims: curated allowlist, not open ingestion.</strong> Instead of pulling any account claiming a trade, maintain a vetted list of accounts with a track record of sourcing from actual filings (e.g. accounts that link primary documents, not just screenshots) — reviewed periodically, added/removed transparently with a visible criteria page. Everything from a non-listed account is dropped at ingestion, not shown with a weaker badge. This is stricter than the original design and meaningfully lowers the defamation exposure from §12, though it doesn't eliminate it — the right-of-reply/takedown process still ships.</li>
+<li><strong>Market data: free sources, adjustment logic built in-house — no vendor spend.</strong> Split/dividend adjustment isn't actually a hard formula problem: Yahoo Finance's <code>adjusted close</code> (free via <code>yfinance</code>) already applies the standard back-adjustment for splits and dividends. NSE/BSE bhavcopy is free and official for India OHLCV. The one thing free sources can't give you is <strong>survivorship-bias-free history</strong> — Yahoo drops a ticker the moment it delists, which biases every backtest upward by silently excluding the losers. That gap gets closed by a self-maintained delisted-securities table, built from free official sources (SEC EDGAR Form 25 filings; NSE/BSE delisted-company notices) rather than a paid feed. More maintenance work on our side, zero vendor cost.
+<div class="tablewrap">
+<table>
+<thead><tr><th>Need</th><th>Free source</th><th>Gap it leaves</th></tr></thead>
+<tbody>
+<tr><td>Adjusted daily OHLCV, US</td><td>Yahoo Finance / <code>yfinance</code></td><td>None — adjustment is already applied</td></tr>
+<tr><td>Adjusted daily OHLCV, India</td><td>NSE/BSE bhavcopy + corporate action bulletins</td><td>Manual join of corporate-action notices to price series</td></tr>
+<tr><td>Fundamentals (US)</td><td>SEC EDGAR XBRL facts API</td><td>None — this is the primary source anyway, not a proxy for one</td></tr>
+<tr><td>Survivorship (delisted names)</td><td>SEC Form 25 + NSE/BSE delisted lists</td><td><strong>Self-maintained</strong> — no free API bundles this; has to be built and kept current by hand</td></tr>
+</tbody>
+</table>
+</div>
+<p>Revisit a paid feed only if the self-maintained delisted-securities table becomes a maintenance bottleneck at scale — not before.</p>
+</li>
+<li><strong>US + India in parallel, from Phase 1.</strong> See the roadmap note above for the asymmetry this doesn't fix.</li>
+<li><strong>Posture: analytics, not advisory.</strong> Confirmed — the product describes what happened and how it performed; it never issues a buy/sell instruction. This should still get a real legal read on SEBI's Research Analyst regs before India launch, since "analytics" is a self-description, not a legal safe harbor.</li>
+</ol>
+</section>
+
+<footer>
+<span>Ledger &amp; Signal</span>
+<span>Product &amp; methodology plan, revision 4</span>
+</footer>
+
+</main>
+</div>
