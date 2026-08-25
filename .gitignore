@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.cache/
+*.db
+node_modules/
