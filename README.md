@@ -22,8 +22,40 @@ data is loaded. Rather than fill those columns with estimates, every
 trade-derived figure reports its absence. Check for yourself:
 
 ```bash
-python -m ledger status      # what this host can actually fetch
-python -m ledger selftest    # proves the pipeline works, offline
+python -m ledger status              # what this host can actually fetch
+python -m ledger selftest            # proves the pipeline works, offline
+python -m ledger probe --year 2024   # live fetch, prints real filings, saves nothing
+```
+
+## Running it on your own machine
+
+The 403s above are this sandbox's egress policy, not the sources refusing us —
+on a normal internet connection `probe` fetches live records. `dist/` holds a
+portable build:
+
+| file | what it is |
+|---|---|
+| `dist/ledger.pyz` | the whole app in one 90 KB file — needs Python 3.10+, **no pip installs** |
+| `dist/run-windows.bat` | double-click on Windows; runs status → selftest → live probe |
+| `dist/run.sh` | same, macOS/Linux |
+
+```bash
+python ledger.pyz probe --year 2024
+```
+
+prints real representatives' names, filing dates and document ids from the
+House Clerk's index, then downloads one real filing and shows the transactions
+parsed out of it. Every document id is checkable by hand against
+[the Clerk's search page](https://disclosures-clerk.house.gov/PublicDisclosure/FinancialDisclosure).
+If it can't reach the source it says so — it never falls back to invented data.
+
+**For a real `.exe`:** PyInstaller bundles the host OS's Python runtime, so a
+Windows binary must be built on Windows — there is no cross-compile from Linux.
+`packaging/ledger.spec` makes it one command:
+
+```
+py -m pip install pyinstaller
+py -m PyInstaller packaging\ledger.spec     ->  dist\ledger.exe
 ```
 
 `selftest` runs the whole chain on a deterministic price path — two filers with

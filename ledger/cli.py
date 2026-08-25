@@ -141,6 +141,72 @@ def cmd_selftest(args) -> int:
     return 0 if ok else 1
 
 
+def cmd_probe(args) -> int:
+    """Fetch live filings and print them, writing nothing.
+
+    This exists to answer one question: is the pipeline pulling real records?
+    It hits the House Clerk's real index, prints real filer names and document
+    ids you can look up yourself, then downloads one real filing and shows the
+    transactions parsed out of it.
+    """
+    src = HousePTR(_client(args.cache))
+    print(f"fetching {args.year} House financial disclosure index ...")
+    try:
+        refs = src.discover(year=args.year)
+    except Blocked as e:
+        print(f"\nREFUSED: {e}\n"
+              "This host cannot reach the source. Run this on a machine with "
+              "normal internet access.", file=sys.stderr)
+        return 2
+    except Exception as e:
+        print(f"\nFETCH FAILED: {type(e).__name__}: {e}", file=sys.stderr)
+        return 1
+
+    print(f"\n{len(refs)} periodic transaction reports filed in {args.year}\n")
+    print(f"{'filer':<30}{'seat':<8}{'filed':<12}{'doc id':<12}")
+    print("-" * 62)
+    for r in refs[: args.show]:
+        name = f"{r['first']} {r['last']}".strip()
+        print(f"{name[:29]:<30}{r['state_district']:<8}{r['filed_date']:<12}{r['doc_id']:<12}")
+
+    # Pull one real filing and show what comes out of it.
+    print(f"\ndownloading one filing to verify parsing ...")
+    for ref in refs[: args.show]:
+        try:
+            raw = src.fetch(ref)
+        except Blocked as e:
+            print(f"REFUSED: {e}", file=sys.stderr)
+            return 2
+        except Exception as e:
+            print(f"  {ref['doc_id']}: {type(e).__name__}", file=sys.stderr)
+            continue
+        text = src.extract_text(raw)
+        txns = src.parse_text(text, disclosed_date=ref["filed_date"])
+        conf = src.extraction_confidence(text, txns)
+        print(f"\n  {ref['url']}")
+        print(f"  {len(raw):,} bytes, {len(text):,} chars extracted, "
+              f"confidence {conf:.2f}")
+        if not text.strip():
+            print("  no text layer - this is a scanned filing and needs OCR "
+                  "(pip install pytesseract pdf2image)")
+            continue
+        if not txns:
+            print("  text extracted but no transactions matched - flagged for review")
+            continue
+        print(f"\n  {'date':<12}{'ticker':<9}{'action':<10}{'owner':<9}{'amount'}")
+        print("  " + "-" * 58)
+        for t in txns[: args.rows]:
+            amt = (f"${t['amount_low']:,.0f}-" +
+                   (f"${t['amount_high']:,.0f}" if t["amount_high"] else "+")
+                   ) if t["amount_low"] else "-"
+            print(f"  {t['txn_date']:<12}{(t['ticker'] or '-'):<9}"
+                  f"{t['action']:<10}{t['owner']:<9}{amt}")
+        print(f"\n  {len(txns)} transactions parsed from this filing.")
+        return 0
+    print("\nno filing could be downloaded", file=sys.stderr)
+    return 1
+
+
 def cmd_ingest_house(args) -> int:
     store = Store(args.db)
     src = HousePTR(_client(args.cache))
@@ -241,6 +307,14 @@ def main(argv=None) -> int:
     sub.add_parser("selftest", help="run the pipeline offline").set_defaults(fn=cmd_selftest)
 
     common = dict(db="ledger.db", cache=".cache")
+
+    pr = sub.add_parser("probe", help="fetch live filings and print them (writes nothing)")
+    pr.add_argument("--year", type=int, default=date.today().year - 1)
+    pr.add_argument("--cache", default=common["cache"])
+    pr.add_argument("--show", type=int, default=10, help="index rows to list")
+    pr.add_argument("--rows", type=int, default=15, help="transactions to print")
+    pr.set_defaults(fn=cmd_probe)
+
     h = sub.add_parser("ingest-house", help="ingest House PTR filings")
     h.add_argument("--year", type=int, required=True)
     h.add_argument("--db", default=common["db"])
