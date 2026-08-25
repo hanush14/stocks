@@ -1,0 +1,939 @@
+<title>Ledger &amp; Signal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --page:#e9edf3; --surface:#ffffff; --surface-2:#f4f7fa; --surface-3:#eaeff5;
+  --ink:#0d141d; --ink-soft:#4a5666; --ink-faint:#7b8798;
+  --line:#dae1ea; --line-soft:#e8edf3;
+  --accent:#3d4fd4; --accent-wash:rgba(61,79,212,.09); --accent-ink:#3d4fd4;
+  --s1:#2a78d6; --s2:#eb6834;
+  --good:#0ca30c; --bad:#d03b3b; --warn:#b07908;
+  --good-wash:rgba(12,163,12,.10); --bad-wash:rgba(208,59,59,.10);
+  --shadow:0 1px 2px rgba(13,20,29,.05), 0 4px 12px rgba(13,20,29,.04);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#080c11; --surface:#121821; --surface-2:#19212c; --surface-3:#1f2833;
+    --ink:#e3eaf2; --ink-soft:#94a2b3; --ink-faint:#697787;
+    --line:#212b38; --line-soft:#1a222d;
+    --accent:#8494ff; --accent-wash:rgba(132,148,255,.13); --accent-ink:#8494ff;
+    --s1:#3987e5; --s2:#d95926;
+    --good:#22c55e; --bad:#f0736c; --warn:#fab219;
+    --good-wash:rgba(34,197,94,.13); --bad-wash:rgba(240,115,108,.13);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.2);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#080c11; --surface:#121821; --surface-2:#19212c; --surface-3:#1f2833;
+  --ink:#e3eaf2; --ink-soft:#94a2b3; --ink-faint:#697787;
+  --line:#212b38; --line-soft:#1a222d;
+  --accent:#8494ff; --accent-wash:rgba(132,148,255,.13); --accent-ink:#8494ff;
+  --s1:#3987e5; --s2:#d95926;
+  --good:#22c55e; --bad:#f0736c; --warn:#fab219;
+  --good-wash:rgba(34,197,94,.13); --bad-wash:rgba(240,115,108,.13);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.2);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--page); color:var(--ink);
+  font-family:"Archivo",system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.mono,.num{font-family:"JetBrains Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ---------- shell ---------- */
+.top{position:sticky;top:0;z-index:40;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1240px;margin:0 auto;padding:.7rem 1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:.5rem;margin-right:auto}
+.brand b{font-size:1.02rem;font-weight:700;letter-spacing:-.02em}
+.brand .sub{font-family:"JetBrains Mono",monospace;font-size:.63rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+.demo{font-family:"JetBrains Mono",monospace;font-size:.62rem;font-weight:700;letter-spacing:.1em;
+  background:var(--warn);color:#20160a;padding:.25em .5em;border-radius:3px;white-space:nowrap}
+
+.search{position:relative;flex:1 1 210px;max-width:290px}
+.search input{width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);
+  border-radius:6px;padding:.42rem .6rem .42rem 1.9rem;font-size:.85rem;font-family:inherit}
+.search input::placeholder{color:var(--ink-faint)}
+.search svg{position:absolute;left:.55rem;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--ink-faint);fill:none;stroke-width:2}
+
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:2px;gap:2px}
+.seg button{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.04em;padding:.3rem .55rem;
+  border-radius:4px;color:var(--ink-soft);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);font-weight:700}
+
+.tabs{max-width:1240px;margin:0 auto;padding:0 1.25rem;display:flex;gap:.25rem;border-bottom:1px solid var(--line)}
+.tabs button{padding:.6rem .05rem;margin-right:1.35rem;font-size:.87rem;font-weight:600;color:var(--ink-faint);
+  border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button:hover{color:var(--ink)}
+.tabs .cnt{font-family:"JetBrains Mono",monospace;font-size:.68rem;color:var(--ink-faint);margin-left:.3rem}
+
+main{max-width:1240px;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+@media(max-width:560px){ .top-in{padding:.6rem .85rem} .tabs{padding:0 .85rem} main{padding:1.1rem .85rem 3rem} }
+
+/* ---------- primitives ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:9px}
+h2.sec{font-size:1.05rem;font-weight:700;letter-spacing:-.015em;margin:0 0 .15rem}
+.sec-note{font-size:.83rem;color:var(--ink-soft);margin:0 0 .9rem;max-width:70ch}
+.rowgap{display:flex;flex-direction:column;gap:1.6rem}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:.7rem}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:.8rem .9rem}
+.tile .lab{font-family:"JetBrains Mono",monospace;font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);display:block;margin-bottom:.35rem}
+.tile .val{font-family:"JetBrains Mono",monospace;font-size:1.55rem;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.tile .foot{font-size:.74rem;color:var(--ink-soft);margin-top:.2rem}
+
+.chip{display:inline-flex;align-items:center;gap:.3em;font-family:"JetBrains Mono",monospace;font-size:.65rem;
+  font-weight:500;padding:.2em .5em;border-radius:4px;white-space:nowrap;border:1px solid transparent}
+.chip.sig{background:var(--good-wash);color:var(--good);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+.chip.chance{background:var(--surface-3);color:var(--ink-soft);border-color:var(--line)}
+.chip.insuf{background:transparent;color:var(--ink-faint);border-color:var(--line);border-style:dashed}
+.chip.fade{background:var(--bad-wash);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.chip.plain{background:var(--surface-2);color:var(--ink-soft);border-color:var(--line)}
+.chip.acc{background:var(--accent-wash);color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+
+.pos{color:var(--good)} .neg{color:var(--bad)}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.84rem;min-width:640px}
+th,td{text-align:left;padding:.55rem .75rem;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+thead th{font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-faint);font-weight:400;background:var(--surface-2);border-bottom:1px solid var(--line);
+  white-space:nowrap;position:sticky;top:0}
+tbody tr:last-child td{border-bottom:none}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:var(--surface-2)}
+th.r,td.r{text-align:right}
+.rank{font-family:"JetBrains Mono",monospace;color:var(--ink-faint);font-size:.75rem;width:1.5rem}
+.ename{font-weight:600;display:block;line-height:1.25}
+.erole{font-size:.72rem;color:var(--ink-faint);display:block;line-height:1.3}
+
+/* ---------- entity grid ---------- */
+.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:.8rem}
+.ecard{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:.9rem;text-align:left;
+  display:flex;flex-direction:column;gap:.6rem;width:100%;transition:border-color .12s,transform .12s}
+.ecard:hover{border-color:var(--accent);transform:translateY(-1px)}
+.ecard .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.ecard .nm{font-weight:600;font-size:.93rem;line-height:1.2}
+.ecard .rl{font-size:.73rem;color:var(--ink-faint);margin-top:.1rem}
+.ecard .mid{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.ecard .conf{font-family:"JetBrains Mono",monospace;font-size:1.5rem;font-weight:700;letter-spacing:-.03em;line-height:1}
+.ecard .confl{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+.ecard .ft{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--ink-soft);
+  border-top:1px solid var(--line-soft);padding-top:.5rem}
+
+/* meter */
+.meter{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+.meter.none{background:transparent;border:1px dashed var(--line);height:5px;border-radius:3px}
+
+/* ---------- detail ---------- */
+.back{display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--ink-soft);
+  font-family:"JetBrains Mono",monospace;margin-bottom:.9rem}
+.back:hover{color:var(--accent)}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem}
+.dhead h1{font-size:1.65rem;font-weight:700;letter-spacing:-.028em;margin:0 0 .2rem;text-wrap:balance}
+.dhead .dsub{font-size:.86rem;color:var(--ink-soft)}
+.chips{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.5rem}
+.two{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:1rem;align-items:start}
+@media(max-width:820px){.two{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:1rem 1.1rem}
+.panel h3{font-size:.83rem;font-weight:700;margin:0 0 .12rem;letter-spacing:-.005em}
+.panel .ph{font-size:.76rem;color:var(--ink-faint);margin:0 0 .8rem;line-height:1.45}
+.kv{display:flex;justify-content:space-between;gap:1rem;padding:.4rem 0;border-bottom:1px solid var(--line-soft);font-size:.82rem}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--ink-soft)}
+.kv .v{font-family:"JetBrains Mono",monospace;font-weight:500}
+
+/* chart */
+.chartwrap{position:relative}
+.chartwrap svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:.9rem;flex-wrap:wrap;font-size:.74rem;color:var(--ink-soft);margin-top:.6rem}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.sw{width:10px;height:10px;border-radius:2px;flex:none}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;
+  box-shadow:var(--shadow);padding:.45rem .6rem;font-size:.75rem;opacity:0;transition:opacity .1s;z-index:5;white-space:nowrap}
+.tip .tt{font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--ink-faint);display:block}
+.tip .tv{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:.85rem}
+.gridline{stroke:var(--line);stroke-width:1}
+.axtext{font-family:"JetBrains Mono",monospace;font-size:9px;fill:var(--ink-faint)}
+.toggle{display:flex;gap:.2rem;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:2px}
+.toggle button{font-family:"JetBrains Mono",monospace;font-size:.63rem;padding:.2rem .45rem;border-radius:3px;color:var(--ink-soft)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700}
+.phead{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.15rem}
+
+/* bar in table */
+.minibar{display:flex;align-items:center;gap:.45rem;justify-content:flex-end}
+.minibar .track{width:44px;height:12px;position:relative;flex:none}
+.minibar .track i{position:absolute;top:4px;height:4px;border-radius:2px}
+.minibar .track .zero{position:absolute;left:50%;top:1px;bottom:1px;width:1px;background:var(--line)}
+
+/* empty state */
+.empty{text-align:center;padding:2.4rem 1rem;color:var(--ink-faint)}
+.empty .big{font-family:"JetBrains Mono",monospace;font-size:.95rem;color:var(--ink-soft);margin-bottom:.3rem;font-weight:500}
+.empty p{font-size:.82rem;max-width:44ch;margin:0 auto;line-height:1.5}
+
+.note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:7px;padding:.8rem 1rem}
+.note b{display:block;font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.11em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:.3rem}
+.note p{margin:0;font-size:.83rem;color:var(--ink-soft);line-height:1.55;max-width:78ch}
+
+.foot{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);font-family:"JetBrains Mono",monospace;
+  font-size:.68rem;color:var(--ink-faint);line-height:1.7}
+
+.fade-in{animation:fi .18s ease-out}
+@keyframes fi{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <b>Ledger &amp; Signal</b>
+      <span class="sub">Disclosure Intelligence</span>
+    </div>
+    <span class="demo">SAMPLE DATA</span>
+    <div class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search people or tickers…" aria-label="Search people or tickers">
+    </div>
+    <div class="seg" id="mkt" role="group" aria-label="Market"></div>
+    <div class="seg" id="typ" role="group" aria-label="Entity type"></div>
+  </div>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+</header>
+<main id="app"></main>
+
+<script>
+"use strict";
+
+/* ============================ SYNTHETIC DATASET ============================
+   Entities and companies below are fictional. No real person or company is
+   represented. Figures are illustrative and exist to exercise the interface. */
+
+const CO = {
+  ARDN :{n:'Ardent Semiconductor', s:'Information Technology', m:'US', px:112.40},
+  KLDR :{n:'Kelder Defense Systems',s:'Industrials',           m:'US', px:88.15},
+  NVSTA:{n:'Novista Therapeutics',  s:'Health Care',            m:'US', px:34.70},
+  PTRX :{n:'Petrolux Energy',       s:'Energy',                 m:'US', px:61.05},
+  BRVA :{n:'Brava Financial Group', s:'Financials',             m:'US', px:58.90},
+  SLRS :{n:'Solaris Grid',          s:'Utilities',              m:'US', px:27.35},
+  MERC :{n:'Mercato Retail',        s:'Consumer Discretionary', m:'US', px:45.60},
+  TELV :{n:'Telvane Communications',s:'Communication Services', m:'US', px:19.80},
+  GRNT :{n:'Granite Materials',     s:'Materials',              m:'US', px:73.25},
+  HAVN :{n:'Havenbrook Realty',     s:'Real Estate',            m:'US', px:22.10},
+  BHRT :{n:'Bharat Infra',          s:'Industrials',            m:'IN', px:1840.00},
+  SNDR :{n:'Sundara Chemicals',     s:'Materials',              m:'IN', px:642.50},
+  VYNA :{n:'Vayana Motors',         s:'Consumer Discretionary', m:'IN', px:2115.00},
+  KAVR :{n:'Kaveri Power',          s:'Utilities',              m:'IN', px:388.75}
+};
+
+// position: [ticker, entryDate, disclosedDate, entryPx, benchmark%, owner, instrument, size, closePx|null]
+const E = [
+{id:'whitfield', name:'Dana Whitfield', role:'Rep. — US House', type:'politician', mkt:'US',
+ juris:'Financial Services Committee', jsec:['Financials'], src:'STOCK Act PTR',
+ n:47, conf:71, sig:'sig', lag:38, aTrade:14.2, aDisc:3.1, aDisc2:1.8,
+ inJur:6.4, outJur:1.2, late:3, amend:6, legible:88,
+ pos:[
+  ['BRVA','2024-03-12','2024-04-19',41.20,9.2,'self','Equity','$50k–$100k',null],
+  ['ARDN','2024-06-04','2024-07-11',78.50,14.1,'self','Equity','$15k–$50k',null],
+  ['HAVN','2023-11-20','2023-12-28',25.40,4.8,'spouse','Equity','$100k–$250k',null],
+  ['MERC','2024-09-17','2024-10-24',38.90,6.2,'self','Equity','$15k–$50k',null],
+  ['BRVA','2025-01-08','2025-02-14',49.75,3.1,'joint','Call option','$50k–$100k',null],
+  ['TELV','2023-08-02','2023-09-10',24.60,11.5,'self','Equity','$1k–$15k',19.80]]},
+
+{id:'moreno', name:'Alicia Moreno', role:'Rep. — US House', type:'politician', mkt:'US',
+ juris:'Energy & Commerce Committee', jsec:['Energy','Utilities','Health Care','Communication Services'], src:'STOCK Act PTR',
+ n:63, conf:83, sig:'sig', lag:29, aTrade:21.6, aDisc:5.9, aDisc2:4.1,
+ inJur:11.8, outJur:1.9, late:1, amend:3, legible:96,
+ pos:[
+  ['PTRX','2024-02-06','2024-03-05',42.10,5.4,'self','Equity','$100k–$250k',null],
+  ['SLRS','2024-05-21','2024-06-18',18.20,8.9,'self','Equity','$50k–$100k',null],
+  ['NVSTA','2024-08-13','2024-09-09',22.15,7.1,'self','Call option','$250k–$500k',null],
+  ['ARDN','2025-02-11','2025-03-12',91.30,2.6,'self','Equity','$15k–$50k',null],
+  ['TELV','2024-11-05','2024-12-03',16.40,4.4,'self','Equity','$50k–$100k',null],
+  ['GRNT','2023-09-19','2023-10-17',68.90,12.2,'spouse','Equity','$15k–$50k',null]]},
+
+{id:'hargrove', name:'Robert Hargrove', role:'Sen. — US Senate', type:'politician', mkt:'US',
+ juris:'Energy & Natural Resources', jsec:['Energy','Utilities'], src:'STOCK Act PTR',
+ n:19, conf:44, sig:'chance', lag:41, aTrade:6.8, aDisc:0.4, aDisc2:-0.2,
+ inJur:1.1, outJur:0.6, late:7, amend:14, legible:61,
+ pos:[
+  ['PTRX','2024-04-16','2024-05-27',55.30,6.8,'self','Equity','$15k–$50k',null],
+  ['SLRS','2024-07-09','2024-08-19',25.80,5.2,'self','Equity','$1k–$15k',null],
+  ['MERC','2023-12-12','2024-01-22',44.20,9.4,'spouse','Equity','$15k–$50k',null],
+  ['HAVN','2024-10-01','2024-11-12',24.90,3.8,'self','Equity','$1k–$15k',null]]},
+
+{id:'blackwood', name:'Thomas Blackwood', role:'Sen. — US Senate', type:'politician', mkt:'US',
+ juris:'Armed Services Committee', jsec:['Industrials'], src:'STOCK Act PTR',
+ n:34, conf:26, sig:'fade', lag:44, aTrade:-8.4, aDisc:-4.2, aDisc2:-4.0,
+ inJur:-6.1, outJur:-1.4, late:5, amend:9, legible:73,
+ pos:[
+  ['KLDR','2024-01-23','2024-03-07',96.40,7.9,'self','Equity','$100k–$250k',null],
+  ['GRNT','2024-06-11','2024-07-25',81.50,5.1,'self','Equity','$50k–$100k',null],
+  ['ARDN','2024-09-03','2024-10-16',124.80,4.2,'self','Equity','$15k–$50k',null],
+  ['MERC','2025-01-14','2025-02-26',52.30,2.2,'spouse','Equity','$15k–$50k',null],
+  ['PTRX','2023-10-10','2023-11-21',68.20,8.6,'self','Equity','$50k–$100k',null]]},
+
+{id:'raghavan', name:'Priya Raghavan', role:'Rep. — US House', type:'politician', mkt:'US',
+ juris:'Science, Space & Technology', jsec:['Information Technology'], src:'STOCK Act PTR',
+ n:22, conf:62, sig:'chance', lag:35, aTrade:9.1, aDisc:2.2, aDisc2:1.5,
+ inJur:4.0, outJur:1.1, late:0, amend:2, legible:94,
+ pos:[
+  ['ARDN','2024-04-09','2024-05-14',71.20,11.8,'self','Equity','$50k–$100k',null],
+  ['TELV','2024-08-27','2024-10-01',17.90,5.5,'self','Equity','$15k–$50k',null],
+  ['NVSTA','2025-03-04','2025-04-08',31.60,1.9,'spouse','Equity','$1k–$15k',null]]},
+
+{id:'deshmukh', name:'Vikram Deshmukh', role:'MP — Lok Sabha', type:'politician', mkt:'IN',
+ juris:'Petroleum & Natural Gas', jsec:['Energy'], src:'MCA21 director filing (proxy)',
+ n:4, conf:null, sig:'insuf', lag:229, aTrade:null, aDisc:null, aDisc2:null,
+ inJur:null, outJur:null, late:null, amend:null, legible:44,
+ pos:[
+  ['BHRT','2023-06-15','2024-01-30',1420.00,14.2,'self','Equity','—',null],
+  ['KAVR','2024-02-20','2024-09-11',310.00,8.4,'self','Equity','—',null]]},
+
+{id:'iyer', name:'Sunita Iyer', role:'MP — Rajya Sabha', type:'politician', mkt:'IN',
+ juris:'Commerce & Industry', jsec:['Consumer Discretionary'], src:'MCA21 director filing (proxy)',
+ n:2, conf:null, sig:'insuf', lag:228, aTrade:null, aDisc:null, aDisc2:null,
+ inJur:null, outJur:null, late:null, amend:null, legible:38,
+ pos:[
+  ['SNDR','2024-03-08','2024-10-22',588.00,6.1,'self','Equity','—',null]]},
+
+{id:'halden', name:'Halden Ridge Capital', role:'Institutional manager', type:'whale', mkt:'US',
+ juris:null, jsec:[], src:'SEC Form 13F',
+ n:214, conf:77, sig:'sig', lag:98, aTrade:18.4, aDisc:2.6, aDisc2:2.1,
+ inJur:null, outJur:null, late:0, amend:1, legible:100,
+ pos:[
+  ['ARDN','2024-01-16','2024-05-15',62.30,18.4,'fund','Equity','1.2M sh',null],
+  ['PTRX','2024-04-02','2024-08-14',47.80,9.7,'fund','Equity','840k sh',null],
+  ['NVSTA','2024-07-08','2024-11-14',26.40,6.3,'fund','Equity','2.1M sh',null],
+  ['BRVA','2023-10-11','2024-02-14',38.60,15.2,'fund','Equity','1.5M sh',null],
+  ['GRNT','2024-10-21','2025-02-14',70.10,3.4,'fund','Equity','620k sh',null],
+  ['MERC','2023-07-17','2023-11-14',41.30,13.8,'fund','Equity','980k sh',45.60]]},
+
+{id:'corvid', name:'Corvid Asset Management', role:'Institutional manager', type:'whale', mkt:'US',
+ juris:null, jsec:[], src:'SEC Form 13F',
+ n:156, conf:58, sig:'chance', lag:104, aTrade:7.2, aDisc:0.9, aDisc2:0.6,
+ inJur:null, outJur:null, late:0, amend:2, legible:100,
+ pos:[
+  ['KLDR','2024-02-20','2024-06-14',91.20,8.1,'fund','Equity','450k sh',null],
+  ['HAVN','2024-05-13','2024-09-16',23.80,6.9,'fund','Equity','1.1M sh',null],
+  ['TELV','2024-08-19','2024-12-13',18.20,4.1,'fund','Equity','2.4M sh',null],
+  ['SLRS','2023-11-27','2024-03-14',21.60,11.3,'fund','Equity','700k sh',null]]},
+
+{id:'sandoval', name:'E. R. Sandoval', role:'Activist investor', type:'whale', mkt:'US',
+ juris:null, jsec:[], src:'SEC Schedule 13D/G',
+ n:41, conf:69, sig:'sig', lag:9, aTrade:16.9, aDisc:9.8, aDisc2:7.4,
+ inJur:null, outJur:null, late:0, amend:0, legible:100,
+ pos:[
+  ['ARDN','2024-03-18','2024-03-27',66.90,15.7,'self','Equity','5.4% stake',null],
+  ['SLRS','2024-09-09','2024-09-18',19.40,4.6,'self','Equity','6.1% stake',null],
+  ['NVSTA','2025-01-27','2025-02-05',28.30,2.8,'self','Equity','5.2% stake',null],
+  ['GRNT','2023-12-04','2023-12-13',64.50,10.9,'self','Equity','7.8% stake',null]]},
+
+{id:'bhatia', name:'Rakesh Bhatia', role:'Individual >1% holder', type:'whale', mkt:'IN',
+ juris:null, jsec:[], src:'SEBI LODR Reg 31',
+ n:88, conf:74, sig:'sig', lag:27, aTrade:24.1, aDisc:8.2, aDisc2:6.5,
+ inJur:null, outJur:null, late:0, amend:1, legible:97,
+ pos:[
+  ['BHRT','2024-01-15','2024-02-12',1180.00,12.4,'self','Equity','2.4%',null],
+  ['SNDR','2024-04-22','2024-05-20',470.00,8.8,'self','Equity','3.1%',null],
+  ['VYNA','2024-07-15','2024-08-12',1620.00,6.2,'self','Equity','1.8%',null],
+  ['KAVR','2024-10-14','2024-11-11',295.00,4.1,'self','Equity','2.9%',null],
+  ['BHRT','2023-07-17','2023-08-14',940.00,16.1,'self','Equity','1.2%',1420.00]]},
+
+{id:'meridian', name:'Meridian Bharat Advisors', role:'Institutional manager', type:'whale', mkt:'IN',
+ juris:null, jsec:[], src:'SEBI LODR Reg 31',
+ n:52, conf:51, sig:'chance', lag:31, aTrade:5.4, aDisc:1.1, aDisc2:0.7,
+ inJur:null, outJur:null, late:0, amend:3, legible:95,
+ pos:[
+  ['BHRT','2024-05-20','2024-06-17',1560.00,7.2,'fund','Equity','1.4%',null],
+  ['VYNA','2024-08-19','2024-09-16',1880.00,5.4,'fund','Equity','1.1%',null],
+  ['SNDR','2025-01-20','2025-02-17',625.00,2.1,'fund','Equity','1.9%',null]]},
+
+{id:'venkat', name:'A. K. Venkataraman', role:'Individual >1% holder', type:'whale', mkt:'IN',
+ juris:null, jsec:[], src:'SEBI LODR Reg 31',
+ n:37, conf:66, sig:'sig', lag:24, aTrade:13.7, aDisc:4.9, aDisc2:3.8,
+ inJur:null, outJur:null, late:0, amend:0, legible:98,
+ pos:[
+  ['VYNA','2024-02-19','2024-03-18',1390.00,9.6,'self','Equity','2.2%',null],
+  ['BHRT','2024-06-17','2024-07-15',1640.00,6.8,'self','Equity','1.6%',null],
+  ['KAVR','2024-11-18','2024-12-16',322.00,3.3,'self','Equity','2.7%',null]]}
+];
+
+/* ---------------- derive ---------------- */
+E.forEach(e=>{
+  e.positions = e.pos.map(p=>{
+    const [t,entry,disc,epx,bench,owner,instr,size,closePx]=p;
+    const exit = closePx==null ? CO[t].px : closePx;
+    const ret = (exit/epx-1)*100;
+    return {t, entry, disc, epx, exit, bench, owner, instr, size,
+      open: closePx==null, ret, alpha: ret-bench,
+      inJur: !!(e.jsec&&e.jsec.includes(CO[t].s)),
+      lag: Math.round((new Date(disc)-new Date(entry))/864e5)};
+  });
+});
+const byId = id => E.find(x=>x.id===id);
+
+const CLUSTER_WINDOW = 180;   // days — convergence outside this is coincidence, not conviction
+const CLUSTER_MIN    = 3;     // independent high-confidence entities
+
+/* Tightest CLUSTER_WINDOW-day window containing the most high-confidence holders.
+   Without a bounded window, "cluster" degenerates into "several people own this stock". */
+function tightestCluster(strong){
+  const ds = strong.map(h=>({h, d:new Date(h.p.disc).getTime()})).sort((a,b)=>a.d-b.d);
+  let best={n:0,span:0,members:[]};
+  for(let i=0;i<ds.length;i++){
+    const inWin = ds.filter(x=>x.d>=ds[i].d && x.d-ds[i].d<=CLUSTER_WINDOW*864e5);
+    if(inWin.length>best.n) best={
+      n:inWin.length,
+      span:Math.round((inWin[inWin.length-1].d-inWin[0].d)/864e5),
+      members:inWin.map(x=>x.h)};
+  }
+  return best;
+}
+
+const INST = Object.keys(CO).map(t=>{
+  const holders=[];
+  E.forEach(e=>e.positions.forEach(p=>{ if(p.t===t) holders.push({e,p}); }));
+  const scored = holders.filter(h=>h.e.conf!=null);
+  const strong = scored.filter(h=>h.e.conf>=65 && h.e.sig==='sig');
+  const cl = tightestCluster(strong);
+  return {t, ...CO[t], holders,
+    nHolders: holders.length,
+    avgConf: scored.length? Math.round(scored.reduce((a,h)=>a+h.e.conf,0)/scored.length) : null,
+    cluster: cl.n>=CLUSTER_MIN, clusterN: cl.n, clusterSpan: cl.span, clusterMembers: cl.members,
+    nStrong: strong.length};
+}).sort((a,b)=> (b.cluster-a.cluster) || (b.nHolders-a.nHolders));
+const instBy = t => INST.find(i=>i.t===t);
+
+/* ---------------- helpers ---------------- */
+const SIG={
+  sig  :{cls:'sig',    txt:'Significant',      mark:'✓'},
+  chance:{cls:'chance',txt:'Chance-level',     mark:'~'},
+  fade :{cls:'fade',   txt:'Negative alpha',   mark:'▼'},
+  insuf:{cls:'insuf',  txt:'Insufficient',     mark:'–'}
+};
+const sigChip = s => `<span class="chip ${SIG[s].cls}">${SIG[s].mark} ${SIG[s].txt}</span>`;
+const pct  = (v,d=1)=> v==null?'—':(v>0?'+':'')+v.toFixed(d)+'%';
+const cls  = v => v==null?'':(v>0?'pos':v<0?'neg':'');
+const esc  = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dfmt = d => new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+const money= (v,m)=> m==='IN' ? '₹'+v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})
+                              : '$'+v.toFixed(2);
+
+/* decay model: cumulative abnormal return from trade date out to +180d */
+function decay(e,n=64){
+  if(e.aTrade==null) return null;
+  const L=Math.min(e.lag,150), A=e.aTrade, R=e.aDisc, atD=A-R, out=[];
+  for(let i=0;i<=n;i++){
+    const t=i*180/n;
+    out.push({t, v: t<=L ? atD*(1-Math.pow(1-t/L,2.2))
+                         : atD + R*Math.pow((t-L)/(180-L),0.75)});
+  }
+  return {pts:out, L, A, R, atD};
+}
+
+/* tiny decay sparkline — the motif that carries the thesis into every row */
+function spark(e,w=72,h=22){
+  const d=decay(e);
+  if(!d) return `<svg width="${w}" height="${h}" role="img" aria-label="No decay profile"><line x1="0" y1="${h/2}" x2="${w}" y2="${h/2}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 2"/></svg>`;
+  const vs=d.pts.map(p=>p.v), lo=Math.min(0,...vs), hi=Math.max(0,...vs), sp=(hi-lo)||1;
+  const X=t=>t/180*w, Y=v=>h-2-((v-lo)/sp)*(h-4);
+  const path=d.pts.map((p,i)=>(i?'L':'M')+X(p.t).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ');
+  const dx=X(d.L);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"
+     aria-label="Decay profile: ${pct(d.A)} total, ${pct(d.R)} remaining after disclosure">
+    <rect x="0" y="0" width="${dx.toFixed(1)}" height="${h}" fill="var(--ink-faint)" opacity=".13"/>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="${dx.toFixed(1)}" y1="0" x2="${dx.toFixed(1)}" y2="${h}" stroke="var(--ink-faint)" stroke-width="1" stroke-dasharray="2 2"/>
+  </svg>`;
+}
+
+/* ---------------- state ---------------- */
+const S={view:'overview', ent:null, inst:null, mkt:'all', typ:'all', q:'', chart:'chart'};
+
+const MKT=[['all','All'],['US','US'],['IN','India']];
+const TYP=[['all','All'],['politician','Politicians'],['whale','Whales']];
+const TABS=[['overview','Overview'],['people','People'],['instruments','Instruments']];
+
+function filtered(){
+  const q=S.q.trim().toLowerCase();
+  return E.filter(e=>{
+    if(S.mkt!=='all' && e.mkt!==S.mkt) return false;
+    if(S.typ!=='all' && e.type!==S.typ) return false;
+    if(!q) return true;
+    return e.name.toLowerCase().includes(q) || (e.juris||'').toLowerCase().includes(q)
+        || e.positions.some(p=>p.t.toLowerCase().includes(q)||CO[p.t].n.toLowerCase().includes(q));
+  });
+}
+function filteredInst(){
+  const q=S.q.trim().toLowerCase();
+  return INST.filter(i=>{
+    if(S.mkt!=='all' && i.m!==S.mkt) return false;
+    const hs = S.typ==='all'? i.holders : i.holders.filter(h=>h.e.type===S.typ);
+    if(!hs.length) return false;
+    if(!q) return true;
+    return i.t.toLowerCase().includes(q)||i.n.toLowerCase().includes(q)||i.s.toLowerCase().includes(q)
+        || hs.some(h=>h.e.name.toLowerCase().includes(q));
+  });
+}
+
+/* ---------------- chrome ---------------- */
+function chrome(){
+  document.getElementById('mkt').innerHTML = MKT.map(([v,l])=>
+    `<button data-mkt="${v}" aria-pressed="${S.mkt===v}">${l}</button>`).join('');
+  document.getElementById('typ').innerHTML = TYP.map(([v,l])=>
+    `<button data-typ="${v}" aria-pressed="${S.typ===v}">${l}</button>`).join('');
+  const nE=filtered().length, nI=filteredInst().length;
+  document.getElementById('tabs').innerHTML = TABS.map(([v,l])=>{
+    const c = v==='people'? nE : v==='instruments'? nI : null;
+    return `<button role="tab" data-tab="${v}" aria-selected="${S.view===v||(v==='people'&&S.view==='person')||(v==='instruments'&&S.view==='instrument')}">${l}${c!=null?`<span class="cnt">${c}</span>`:''}</button>`;
+  }).join('');
+}
+
+/* ---------------- views ---------------- */
+function vOverview(){
+  const list=filtered();
+  const scored=list.filter(e=>e.conf!=null);
+  const sig=scored.filter(e=>e.sig==='sig'||e.sig==='fade');
+  const lags=list.map(e=>e.lag).filter(Boolean).sort((a,b)=>a-b);
+  const medLag=lags.length?lags[Math.floor(lags.length/2)]:0;
+  const nPos=list.reduce((a,e)=>a+e.positions.length,0);
+  const rank=[...scored].sort((a,b)=>(b.aDisc??-99)-(a.aDisc??-99));
+
+  return `
+  <div class="rowgap fade-in">
+    <div class="tiles">
+      <div class="tile"><span class="lab">Entities tracked</span><div class="val">${list.length}</div>
+        <div class="foot">${list.filter(e=>e.type==='politician').length} politicians · ${list.filter(e=>e.type==='whale').length} whales</div></div>
+      <div class="tile"><span class="lab">Median disclosure lag</span><div class="val">${medLag}<span style="font-size:.9rem;font-weight:500"> d</span></div>
+        <div class="foot">Before a trade becomes public</div></div>
+      <div class="tile"><span class="lab">Survive FDR correction</span><div class="val">${sig.length}<span style="font-size:.9rem;font-weight:500">/${scored.length}</span></div>
+        <div class="foot">Rest are chance-level</div></div>
+      <div class="tile"><span class="lab">Positions</span><div class="val">${nPos}</div>
+        <div class="foot">Across ${filteredInst().length} instruments</div></div>
+    </div>
+
+    <div class="note">
+      <b>How this leaderboard is sorted</b>
+      <p>Not by return. Every row is ranked by <strong>residual alpha</strong> — the abnormal return still available
+      <em>after</em> the trade became public, which is the only part you could ever have acted on. The sparkline shows
+      the full picture: the shaded band is the run-up captured before disclosure, the dashed line is the moment it
+      became public, and the tail to its right is what was left. A flat tail means there is nothing to follow, however
+      good the headline number looks.</p>
+    </div>
+
+    <div>
+      <h2 class="sec">Followability ranking</h2>
+      <p class="sec-note">Sorted by residual alpha. Note how the order differs from raw performance — the highest total
+      returns are frequently the least followable.</p>
+      <div class="tw"><table>
+        <thead><tr>
+          <th></th><th>Entity</th><th>Decay profile</th>
+          <th class="r">Total alpha</th><th class="r">Residual alpha</th><th class="r">Kept</th>
+          <th class="r">Lag</th><th class="r">n</th><th>Significance</th>
+        </tr></thead>
+        <tbody>${rank.map((e,i)=>{
+          const kept = e.aTrade ? (e.aDisc/e.aTrade*100) : null;
+          return `<tr class="clickable" data-ent="${e.id}" tabindex="0">
+            <td class="rank">${i+1}</td>
+            <td><span class="ename">${esc(e.name)}</span><span class="erole">${esc(e.role)} · ${e.mkt==='IN'?'India':'US'}</span></td>
+            <td>${spark(e)}</td>
+            <td class="r num ${cls(e.aTrade)}">${pct(e.aTrade)}</td>
+            <td class="r num ${cls(e.aDisc)}" style="font-weight:700">${pct(e.aDisc)}</td>
+            <td class="r num" style="color:var(--ink-soft)">${kept==null?'—':Math.round(Math.abs(kept))+'%'}</td>
+            <td class="r num">${e.lag}d</td>
+            <td class="r num">${e.n}</td>
+            <td>${sigChip(e.sig)}</td>
+          </tr>`;}).join('')}</tbody>
+      </table></div>
+    </div>
+
+    ${list.filter(e=>e.conf==null).length?`
+    <div>
+      <h2 class="sec">Not rankable</h2>
+      <p class="sec-note">These entities are tracked but have too little disclosed history to score. They are shown
+      rather than hidden — an empty record is itself a finding about the disclosure regime.</p>
+      <div class="tw"><table>
+        <thead><tr><th>Entity</th><th>Source</th><th class="r">Filings</th><th class="r">Disclosure lag</th><th>Status</th></tr></thead>
+        <tbody>${list.filter(e=>e.conf==null).map(e=>`
+          <tr class="clickable" data-ent="${e.id}" tabindex="0">
+            <td><span class="ename">${esc(e.name)}</span><span class="erole">${esc(e.role)}</span></td>
+            <td style="color:var(--ink-soft);font-size:.8rem">${esc(e.src)}</td>
+            <td class="r num">${e.n}</td><td class="r num">${e.lag}d</td>
+            <td>${sigChip('insuf')}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>`:''}
+  </div>`;
+}
+
+function vPeople(){
+  const list=[...filtered()].sort((a,b)=>(b.conf??-1)-(a.conf??-1));
+  if(!list.length) return emptyState('No entities match','Try clearing the search box or widening the market and type filters.');
+  return `<div class="fade-in">
+    <h2 class="sec">People &amp; funds</h2>
+    <p class="sec-note">Ranked by confidence score — a composite of residual alpha, consistency, recency and sample
+    adequacy. Entities without enough history show no score at all rather than a misleading one.</p>
+    <div class="egrid">${list.map(e=>{
+      const c=e.conf;
+      return `<button class="ecard" data-ent="${e.id}">
+        <div class="hd">
+          <div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)}</div></div>
+          <span class="chip plain">${e.mkt==='IN'?'IN':'US'}</span>
+        </div>
+        <div class="mid">
+          <div>
+            <div class="conf ${c==null?'':''}" style="${c==null?'color:var(--ink-faint);font-size:1rem':''}">${c==null?'No score':c}</div>
+            <div class="confl">${c==null?'insufficient history':'confidence'}</div>
+          </div>
+          ${spark(e,80,26)}
+        </div>
+        ${c==null
+          ? `<div class="meter none" role="img" aria-label="No confidence score available"></div>`
+          : `<div class="meter"><i style="width:${c}%"></i></div>`}
+        <div class="ft"><span>${e.n} filings</span><span>${e.lag}d lag</span><span class="${cls(e.aDisc)}">${pct(e.aDisc)} resid</span></div>
+      </button>`;}).join('')}</div>
+  </div>`;
+}
+
+function vInstruments(){
+  const list=filteredInst();
+  if(!list.length) return emptyState('No instruments match','Try clearing the search box or widening the filters.');
+  return `<div class="fade-in">
+    <h2 class="sec">Instruments</h2>
+    <p class="sec-note">Every tracked security and who is in it. Where three or more high-confidence entities
+    independently hold the same name, it is flagged as a conviction cluster — a stronger and more statistically
+    robust signal than any single trade.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Instrument</th><th>Sector</th><th class="r">Holders</th><th class="r">High-conf.</th>
+        <th class="r">Avg confidence</th><th>Signal</th></tr></thead>
+      <tbody>${list.map(i=>`
+        <tr class="clickable" data-inst="${i.t}" tabindex="0">
+          <td><span class="ename">${i.t}</span><span class="erole">${esc(i.n)}</span></td>
+          <td style="color:var(--ink-soft);font-size:.8rem">${esc(i.s)}</td>
+          <td class="r num">${i.nHolders}</td>
+          <td class="r num">${i.nStrong}</td>
+          <td class="r num">${i.avgConf??'—'}</td>
+          <td>${i.cluster?'<span class="chip acc">◆ Conviction cluster</span>':'<span class="chip plain">—</span>'}</td>
+        </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function emptyState(t,p){ return `<div class="card empty fade-in"><div class="big">${esc(t)}</div><p>${esc(p)}</p></div>`; }
+
+/* ---------- big decay chart, with crosshair + tooltip ---------- */
+function decayChart(e){
+  const d=decay(e);
+  if(!d) return `<div class="empty"><div class="big">No decay profile</div>
+    <p>${esc(e.name)} has ${e.n} disclosed filings — below the sample floor needed to estimate abnormal return with any confidence.</p></div>`;
+  const W=560,H=200,PL=38,PR=14,PT=14,PB=26;
+  const vs=d.pts.map(p=>p.v), lo=Math.min(0,...vs), hi=Math.max(0,...vs);
+  const pad=(hi-lo)*.12||1, LO=lo-pad, HI=hi+pad, SP=HI-LO;
+  const X=t=>PL+(t/180)*(W-PL-PR), Y=v=>PT+(1-(v-LO)/SP)*(H-PT-PB);
+  const path=d.pts.map((p,i)=>(i?'L':'M')+X(p.t).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ');
+  const area=`M${X(0).toFixed(1)},${Y(0).toFixed(1)} `+d.pts.map(p=>'L'+X(p.t).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ')+` L${X(180).toFixed(1)},${Y(0).toFixed(1)} Z`;
+  const dx=X(d.L);
+  const ticks=[LO,LO+SP/2,HI].map(v=>({v,y:Y(v)}));
+  return `
+  <div class="chartwrap" id="cw">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative abnormal return from trade date. Total ${pct(d.A)}, of which ${pct(d.R)} remained after disclosure on day ${d.L}.">
+      ${ticks.map(t=>`<line class="gridline" x1="${PL}" y1="${t.y.toFixed(1)}" x2="${W-PR}" y2="${t.y.toFixed(1)}"/>
+        <text class="axtext" x="${PL-6}" y="${(t.y+3).toFixed(1)}" text-anchor="end">${t.v>0?'+':''}${t.v.toFixed(0)}%</text>`).join('')}
+      <rect x="${PL}" y="${PT}" width="${(dx-PL).toFixed(1)}" height="${H-PT-PB}" fill="var(--ink-faint)" opacity=".11"/>
+      <path d="${area}" fill="var(--accent)" opacity=".10"/>
+      <line class="gridline" x1="${PL}" y1="${Y(0).toFixed(1)}" x2="${W-PR}" y2="${Y(0).toFixed(1)}" stroke="var(--ink-faint)"/>
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="${dx.toFixed(1)}" y1="${PT}" x2="${dx.toFixed(1)}" y2="${H-PB}" stroke="var(--ink-soft)" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <circle cx="${dx.toFixed(1)}" cy="${Y(d.atD).toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+      <circle cx="${X(180).toFixed(1)}" cy="${Y(d.A).toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+      ${(()=>{ /* place the disclosure label so it never collides with the d0 / d180 ticks */
+        const label=`d${d.L} disclosed`, half=label.length*3.1;
+        let anchor='middle', lx=dx;
+        if(dx-half < PL+22){ anchor='start'; lx=dx+5; }
+        else if(dx+half > W-PR-26){ anchor='end'; lx=dx-5; }
+        return `<text class="axtext" x="${PL}" y="${H-8}">d0</text>
+      <text class="axtext" x="${lx.toFixed(1)}" y="${H-8}" text-anchor="${anchor}" style="fill:var(--ink-soft)">${label}</text>
+      <text class="axtext" x="${W-PR}" y="${H-8}" text-anchor="end">d180</text>`; })()}
+      <line id="ch" x1="0" y1="${PT}" x2="0" y2="${H-PB}" stroke="var(--accent)" stroke-width="1" opacity="0"/>
+      <rect id="hit" x="${PL}" y="${PT}" width="${W-PL-PR}" height="${H-PT-PB}" fill="transparent" style="cursor:crosshair"/>
+    </svg>
+    <div class="tip" id="tip"></div>
+  </div>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--ink-faint);opacity:.4"></i> Captured before disclosure</span>
+    <span><i class="sw" style="background:var(--accent)"></i> Cumulative abnormal return</span>
+  </div>`;
+}
+function decayTable(e){
+  const d=decay(e); if(!d) return '';
+  const rows=[0,15,30,45,60,90,120,150,180].map(t=>{
+    const p=d.pts.reduce((a,b)=>Math.abs(b.t-t)<Math.abs(a.t-t)?b:a);
+    return `<tr><td class="num">d${t}</td><td class="r num">${pct(p.v)}</td>
+      <td style="color:var(--ink-soft);font-size:.78rem">${t<d.L?'Not yet public':'Public'}</td></tr>`;}).join('');
+  return `<div class="tw"><table style="min-width:0">
+    <thead><tr><th>Day</th><th class="r">Cumulative abnormal return</th><th>Visibility</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+function vPerson(){
+  const e=byId(S.ent); if(!e) return emptyState('Not found','That entity is no longer in view.');
+  const kept = e.aTrade? Math.round(Math.abs(e.aDisc/e.aTrade*100)) : null;
+  const jm = Math.max(Math.abs(e.inJur||0),Math.abs(e.outJur||0))||1;
+
+  return `<div class="fade-in">
+  <button class="back" data-back="${e.type==='whale'?'people':'people'}">← All people</button>
+  <div class="dhead">
+    <div>
+      <h1>${esc(e.name)}</h1>
+      <div class="dsub">${esc(e.role)}${e.juris?' · '+esc(e.juris):''}</div>
+      <div class="chips">
+        ${sigChip(e.sig)}
+        <span class="chip plain">${e.mkt==='IN'?'India':'United States'}</span>
+        <span class="chip plain">${e.type==='politician'?'Politician':'Whale'}</span>
+        <span class="chip plain">${esc(e.src)}</span>
+      </div>
+    </div>
+    ${e.conf!=null?`<div style="text-align:right">
+      <div class="mono" style="font-size:2.6rem;font-weight:700;letter-spacing:-.04em;line-height:1">${e.conf}</div>
+      <div class="confl" style="font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">Confidence score</div>
+      <div class="meter" style="width:120px;margin-top:.4rem"><i style="width:${e.conf}%"></i></div>
+    </div>`:''}
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <div class="phead">
+        <div><h3>Alpha decay</h3>
+        <p class="ph">How much of the abnormal return had already happened by the time this became public.</p></div>
+        ${e.aTrade!=null?`<div class="toggle" role="group" aria-label="Chart or table view">
+          <button data-chart="chart" aria-pressed="${S.chart==='chart'}">Chart</button>
+          <button data-chart="table" aria-pressed="${S.chart==='table'}">Table</button>
+        </div>`:''}
+      </div>
+      ${S.chart==='chart'?decayChart(e):decayTable(e)}
+      ${e.aTrade!=null?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.9rem">
+        <div class="tile" style="padding:.6rem .7rem"><span class="lab">Total alpha</span><div class="val ${cls(e.aTrade)}" style="font-size:1.15rem">${pct(e.aTrade)}</div></div>
+        <div class="tile" style="padding:.6rem .7rem"><span class="lab">Residual alpha</span><div class="val ${cls(e.aDisc)}" style="font-size:1.15rem">${pct(e.aDisc)}</div></div>
+        <div class="tile" style="padding:.6rem .7rem"><span class="lab">After 2 days</span><div class="val ${cls(e.aDisc2)}" style="font-size:1.15rem">${pct(e.aDisc2)}</div></div>
+      </div>
+      <p class="ph" style="margin:.7rem 0 0">Only <strong style="color:var(--ink)">${kept}%</strong> of this entity's
+      abnormal return was still on the table when the filing appeared${e.aDisc2!=null&&Math.abs(e.aDisc2)<Math.abs(e.aDisc)?`, and less once the market had two days to read it`:''}.</p>`:''}
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      ${e.juris?`<div class="panel">
+        <h3>Jurisdiction split</h3>
+        <p class="ph">Alpha inside the sectors this committee oversees, against everything else. A large gap is the
+        strongest conflict-of-interest pattern the product measures.</p>
+        ${e.inJur!=null?`
+        <div style="display:flex;flex-direction:column;gap:.65rem;margin-top:.2rem">
+          ${[['In jurisdiction',e.inJur,'var(--s1)'],['Out of jurisdiction',e.outJur,'var(--s2)']].map(([l,v,c])=>`
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:.22rem">
+                <span style="color:var(--ink-soft)">${l}</span>
+                <span class="num" style="font-weight:700;color:${c}">${pct(v)}</span>
+              </div>
+              <div style="height:9px;background:var(--surface-3);border-radius:2px;overflow:hidden">
+                <i style="display:block;height:100%;width:${(Math.abs(v)/jm*100).toFixed(0)}%;background:${c};border-radius:2px"></i>
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="kv" style="margin-top:.8rem;border-top:1px solid var(--line-soft);padding-top:.6rem">
+          <span class="k">Gap</span><span class="v ${cls(e.inJur-e.outJur)}">${pct(e.inJur-e.outJur)}</span></div>
+        `:'<p class="ph">Not enough in-sector filings to split.</p>'}
+      </div>`:''}
+
+      <div class="panel">
+        <h3>Disclosure quality</h3>
+        <p class="ph">Scored separately from returns. Being right and being transparent are different things.</p>
+        <div class="kv"><span class="k">Median filing lag</span><span class="v">${e.lag} days</span></div>
+        <div class="kv"><span class="k">Late filings</span><span class="v">${e.late==null?'—':e.late}</span></div>
+        <div class="kv"><span class="k">Amendment rate</span><span class="v">${e.amend==null?'—':e.amend+'%'}</span></div>
+        <div class="kv"><span class="k">Machine-legible</span><span class="v">${e.legible}%</span></div>
+      </div>
+
+      <div class="panel">
+        <h3>Sample &amp; method</h3>
+        <p class="ph">What the score is built from. A rank without its sample size is not a rank.</p>
+        <div class="kv"><span class="k">Disclosed filings</span><span class="v">${e.n}</span></div>
+        <div class="kv"><span class="k">Positions shown</span><span class="v">${e.positions.length}</span></div>
+        <div class="kv"><span class="k">Closed round-trips</span><span class="v">${e.positions.filter(p=>!p.open).length}</span></div>
+        <div class="kv"><span class="k">Open, marked to market</span><span class="v">${e.positions.filter(p=>p.open).length}</span></div>
+        <div class="kv"><span class="k">Significance</span><span class="v" style="font-weight:400">${SIG[e.sig].txt}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1.2rem">
+    <h2 class="sec">Disclosed positions</h2>
+    <p class="sec-note">Return is measured against a sector benchmark over the same window. Open positions are marked
+    to market and never blended with closed round-trips.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Instrument</th><th>Entry</th><th>Disclosed</th><th class="r">Lag</th>
+        <th class="r">Entry</th><th class="r">Now</th><th class="r">Return</th><th class="r">vs bench</th>
+        <th>Size</th><th>Owner</th><th>Type</th></tr></thead>
+      <tbody>${e.positions.map(p=>{
+        const a=p.alpha, w=Math.min(Math.abs(a)/25,1)*23;
+        return `<tr class="clickable" data-inst="${p.t}" tabindex="0">
+          <td><span class="ename">${p.t}${p.inJur?' <span class="chip acc" style="font-size:.58rem">in-juris</span>':''}</span>
+              <span class="erole">${esc(CO[p.t].n)}</span></td>
+          <td class="num" style="font-size:.76rem">${dfmt(p.entry)}</td>
+          <td class="num" style="font-size:.76rem">${dfmt(p.disc)}</td>
+          <td class="r num">${p.lag}d</td>
+          <td class="r num">${money(p.epx,CO[p.t].m)}</td>
+          <td class="r num">${money(p.exit,CO[p.t].m)}${p.open?'':' <span style="color:var(--ink-faint);font-size:.7rem">cl</span>'}</td>
+          <td class="r num ${cls(p.ret)}">${pct(p.ret)}</td>
+          <td class="r"><div class="minibar">
+            <span class="num ${cls(a)}" style="font-weight:600">${pct(a)}</span>
+            <span class="track"><span class="zero"></span>
+              <i style="${a>=0?`left:50%;width:${w}px;background:var(--good)`:`right:50%;width:${w}px;background:var(--bad)`}"></i>
+            </span></div></td>
+          <td style="font-size:.76rem;color:var(--ink-soft)" class="num">${esc(p.size)}</td>
+          <td><span class="chip plain">${p.owner}</span></td>
+          <td style="font-size:.76rem;color:var(--ink-soft)">${esc(p.instr)}</td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>
+  </div>
+</div>`;
+}
+
+function vInstrument(){
+  const i=instBy(S.inst); if(!i) return emptyState('Not found','That instrument is no longer in view.');
+  const hs=[...i.holders].sort((a,b)=>(b.e.conf??-1)-(a.e.conf??-1));
+  const inCluster = new Set(i.clusterMembers.map(h=>h.e.id));
+
+  return `<div class="fade-in">
+  <button class="back" data-back="instruments">← All instruments</button>
+  <div class="dhead">
+    <div>
+      <h1>${i.t}</h1>
+      <div class="dsub">${esc(i.n)} · ${esc(i.s)} · ${i.m==='IN'?'India':'United States'}</div>
+      <div class="chips">
+        ${i.cluster?'<span class="chip acc">◆ Conviction cluster</span>':''}
+        <span class="chip plain">${i.nHolders} tracked holder${i.nHolders===1?'':'s'}</span>
+        ${i.avgConf!=null?`<span class="chip plain">avg confidence ${i.avgConf}</span>`:''}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="mono" style="font-size:2rem;font-weight:700;letter-spacing:-.035em;line-height:1">${money(i.px,i.m)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)">Last price</div>
+    </div>
+  </div>
+
+  ${i.cluster?`<div class="note" style="margin-bottom:1rem">
+    <b>Why this is flagged</b>
+    <p><strong style="color:var(--ink)">${i.clusterN} entities</strong> — each scoring 65 or above with significant
+    alpha — independently disclosed positions in ${i.t} inside a <strong style="color:var(--ink)">${i.clusterSpan}-day
+    window</strong>. The window matters: convergence spread across years is coincidence, so only clusters falling
+    within ${CLUSTER_WINDOW} days are flagged. Rows in the cluster are marked below.</p>
+  </div>`: i.nStrong>=CLUSTER_MIN ? `<div class="note" style="margin-bottom:1rem;border-left-color:var(--ink-faint)">
+    <b style="color:var(--ink-faint)">Not a cluster</b>
+    <p>${i.t} has ${i.nStrong} high-confidence holders, but their disclosures are spread beyond the
+    ${CLUSTER_WINDOW}-day window, so this is co-ownership rather than convergence.</p>
+  </div>`:''}
+
+  <h2 class="sec">Who holds it</h2>
+  <p class="sec-note">Sorted by confidence. Entry dates show whether each holder was early or late relative to the others.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Holder</th><th>Type</th><th class="r">Confidence</th><th>Entry</th><th>Disclosed</th>
+      <th class="r">Entry px</th><th class="r">Return</th><th class="r">vs bench</th><th>Significance</th></tr></thead>
+    <tbody>${hs.map(h=>`
+      <tr class="clickable" data-ent="${h.e.id}" tabindex="0">
+        <td><span class="ename">${esc(h.e.name)}${inCluster.has(h.e.id)?' <span class="chip acc" style="font-size:.58rem">◆ in cluster</span>':''}</span><span class="erole">${esc(h.e.role)}</span></td>
+        <td><span class="chip plain">${h.e.type==='politician'?'Politician':'Whale'}</span></td>
+        <td class="r num" style="font-weight:700">${h.e.conf??'—'}</td>
+        <td class="num" style="font-size:.76rem">${dfmt(h.p.entry)}</td>
+        <td class="num" style="font-size:.76rem">${dfmt(h.p.disc)}</td>
+        <td class="r num">${money(h.p.epx,i.m)}</td>
+        <td class="r num ${cls(h.p.ret)}">${pct(h.p.ret)}</td>
+        <td class="r num ${cls(h.p.alpha)}">${pct(h.p.alpha)}</td>
+        <td>${sigChip(h.e.sig)}</td>
+      </tr>`).join('')}</tbody>
+  </table></div>
+</div>`;
+}
+
+/* ---------------- render + events ---------------- */
+function render(){
+  chrome();
+  const app=document.getElementById('app');
+  app.innerHTML =
+    S.view==='overview'   ? vOverview()   :
+    S.view==='people'     ? vPeople()     :
+    S.view==='instruments'? vInstruments():
+    S.view==='person'     ? vPerson()     :
+    S.view==='instrument' ? vInstrument() : '';
+  app.insertAdjacentHTML('beforeend', `<div class="foot">
+    Ledger &amp; Signal — interface prototype.<br>
+    All entities, companies and figures shown are synthetic and exist to demonstrate the interface. No real person or
+    company is represented, and nothing here is investment advice.</div>`);
+  if(S.view==='person' && S.chart==='chart') wireChart();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+function wireChart(){
+  const cw=document.getElementById('cw'); if(!cw) return;
+  const e=byId(S.ent), d=decay(e); if(!d) return;
+  const svg=cw.querySelector('svg'), hit=cw.querySelector('#hit'),
+        ch=cw.querySelector('#ch'), tip=cw.querySelector('#tip');
+  const W=560,PL=38,PR=14;
+  function move(ev){
+    const r=svg.getBoundingClientRect();
+    const cx=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+    const vx=cx/r.width*W;
+    const t=Math.max(0,Math.min(180,(vx-PL)/(W-PL-PR)*180));
+    const p=d.pts.reduce((a,b)=>Math.abs(b.t-t)<Math.abs(a.t-t)?b:a);
+    const px=PL+(p.t/180)*(W-PL-PR);
+    ch.setAttribute('x1',px); ch.setAttribute('x2',px); ch.setAttribute('opacity','.55');
+    tip.style.opacity='1';
+    tip.innerHTML=`<span class="tt">day ${Math.round(p.t)} · ${p.t<d.L?'not yet public':'public'}</span>
+      <span class="tv ${cls(p.v)}">${pct(p.v)}</span>`;
+    const left=px/W*r.width;
+    tip.style.left=Math.max(0,Math.min(r.width-tip.offsetWidth,left-tip.offsetWidth/2))+'px';
+    tip.style.top='0px';
+  }
+  hit.addEventListener('mousemove',move);
+  hit.addEventListener('touchmove',ev=>{ev.preventDefault();move(ev);},{passive:false});
+  hit.addEventListener('mouseleave',()=>{ch.setAttribute('opacity','0');tip.style.opacity='0';});
+}
+
+document.addEventListener('click',ev=>{
+  const t=ev.target;
+  const seg=t.closest('[data-mkt],[data-typ]');
+  if(seg){
+    if(seg.dataset.mkt!==undefined) S.mkt=seg.dataset.mkt;
+    if(seg.dataset.typ!==undefined) S.typ=seg.dataset.typ;
+    if(S.view==='person'||S.view==='instrument') S.view = S.view==='person'?'people':'instruments';
+    return render();
+  }
+  const tab=t.closest('[data-tab]');       if(tab){ S.view=tab.dataset.tab; return render(); }
+  const back=t.closest('[data-back]');     if(back){ S.view=back.dataset.back; return render(); }
+  const ch=t.closest('[data-chart]');      if(ch){ S.chart=ch.dataset.chart; return render(); }
+  const ent=t.closest('[data-ent]');       if(ent){ S.ent=ent.dataset.ent; S.view='person'; S.chart='chart'; return render(); }
+  const ins=t.closest('[data-inst]');      if(ins){ S.inst=ins.dataset.inst; S.view='instrument'; return render(); }
+});
+document.addEventListener('keydown',ev=>{
+  if(ev.key!=='Enter'&&ev.key!==' ') return;
+  const r=ev.target.closest('tr.clickable'); if(!r) return;
+  ev.preventDefault(); r.click();
+});
+let qt;
+document.getElementById('q').addEventListener('input',ev=>{
+  clearTimeout(qt); const v=ev.target.value;
+  qt=setTimeout(()=>{ S.q=v;
+    if(S.view==='person'||S.view==='instrument') S.view='people';
+    render();
+    const inp=document.getElementById('q'); inp.value=v; inp.focus();
+  },140);
+});
+
+render();
+</script>
